@@ -1,0 +1,36 @@
+design:
+  type: category
+  values: [group, single_case]
+  definition: Research design of the study
+  color: '#1f77b4'
+  terms:
+    group: [randomly assigned, random assignment, comparison group, control group]
+    single_case: [single-case, multiple baseline, reversal design]
+sample_size:
+  type: integer
+  stat: n
+  range: [1, 100000]
+  definition: Number of participants in the analytic sample
+  color: '#ff7f0e'
+grade_band:
+  type: category
+  values: [elementary, middle, high]
+  definition: Grade band of participants
+  color: '#2ca02c'
+  terms:
+    elementary: [elementary school, primary school]
+    middle: [middle school]
+    high: [high school, secondary school]
+setting:
+  type: text
+  query: Where did the study take place?
+  definition: Place where the study took place
+  color: '#9467bd'
+outcome_domain:
+  type: category
+  values: [achievement, behavioural]
+  definition: Domain of the primary outcome
+  color: '#d62728'
+  terms:
+    achievement: [reading, posttest score*, achievement]
+    behavioural: [on-task behavio*, disruptive behavio*, problem behavio*]

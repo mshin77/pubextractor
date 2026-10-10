@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=77.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pubextractor"
+version = "0.1.0"
+description = "Data extraction for systematic reviews and meta-analyses"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    {name = "Mikyung Shin", email = "shin.mikyung@gmail.com"}
+]
+keywords = ["systematic-review", "meta-analysis", "data-extraction", "effect-size", "llm"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Text Processing",
+]
+
+dependencies = [
+    "numpy>=1.24.0",
+    "pdfplumber>=0.11",
+    "python-docx>=1.1",
+    "openpyxl>=3.1.0",
+    "pyyaml>=6",
+    "pandas>=2.0.0",
+    "pillow",
+    "shiny>=1.0",
+    "plotly>=5.0",
+    "markdown-it-py>=2.0",
+    "htmltools",
+]
+
+[project.optional-dependencies]
+semantic = ["sentence-transformers>=2.2.0,<6.0"]
+test = [
+    "reportlab",
+    "matplotlib",
+    "pytest>=7.0",
+]
+
+[project.scripts]
+pubextractor = "pubextractor.app:main"
+
+[project.urls]
+Repository = "https://github.com/mshin77/pubextractor"
+Issues = "https://github.com/mshin77/pubextractor/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pubextractor*"]
+
+[tool.setuptools.package-data]
+pubextractor = ["app_pages/*.md", "examples/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

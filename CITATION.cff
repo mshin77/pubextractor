@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "Please cite this software using the metadata below."
+type: software
+title: "pubextractor: Data extraction for systematic reviews and meta-analyses"
+authors:
+  - family-names: Shin
+    given-names: Mikyung
+    email: shin.mikyung@gmail.com
+    orcid: "https://orcid.org/0000-0001-7907-9193"
+version: "0.1.0"
+abstract: "Reads full-text PDFs with page anchors, extracts coded values through rules, semantic similarity, and language models, and checks per paper where its text may be processed. Exports effect sizes for group, single-case, and correlation design studies."
+license: MIT
+url: "https://github.com/mshin77/pubextractor"
+repository-code: "https://github.com/mshin77/pubextractor"
+keywords:
+  - systematic review
+  - meta-analysis
+  - data extraction
+  - effect size
+  - Python

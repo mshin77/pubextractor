@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.env
+.doctrees/
+docs/_sources/
+docs/.buildinfo.bak
+.ruff_cache/
+*.bak
