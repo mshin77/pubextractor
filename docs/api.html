@@ -371,6 +371,7 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#single-case-graphs">Single-case graphs</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#other-figures">Other figures</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#agreement">Agreement</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#input-and-export-checks">Input and export checks</a></li>
 </ul>
   </nav></div>
     </div>
@@ -1149,6 +1150,10 @@
 </section>
 <section id="agreement">
 <h2>Agreement<a class="headerlink" href="#agreement" title="Link to this heading">#</a></h2>
+<p>Numeric fields with no valid paired values return empty error and bias metrics. <code class="docutils literal notranslate"><span class="pre">kappa</span></code>
+requires equal-length label lists; <code class="docutils literal notranslate"><span class="pre">icc</span></code> requires finite ratings from at least two raters.
+Excel exports preserve text beginning with <code class="docutils literal notranslate"><span class="pre">=</span></code> as literal text. Coding-sheet imports
+require <code class="docutils literal notranslate"><span class="pre">paper_id</span></code>, <code class="docutils literal notranslate"><span class="pre">field</span></code>, and <code class="docutils literal notranslate"><span class="pre">coded_value</span></code> columns.</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -1188,6 +1193,19 @@
 </tbody>
 </table>
 </div>
+</section>
+<section id="input-and-export-checks">
+<h2>Input and export checks<a class="headerlink" href="#input-and-export-checks" title="Link to this heading">#</a></h2>
+<p>Codebook definitions, queries, and notes must be text; range bounds must be finite.
+Model extraction keeps non-finite numbers and invalid passage citations under review.
+Retrieval requires a positive integer <code class="docutils literal notranslate"><span class="pre">top_k</span></code> and finite embeddings with matching
+dimensions. A retrieval cache tracks document content and encoder identity.</p>
+<p>Effect calculations return <code class="docutils literal notranslate"><span class="pre">not_computed</span></code> with named checks for malformed numeric
+inputs, fractional sample sizes, negative test statistics, or invalid variance overrides.
+Wide exports reject generated column collisions. Matrix exports reject filename
+collisions, including the reserved <code class="docutils literal notranslate"><span class="pre">n.csv</span></code>, repeated or reserved <code class="docutils literal notranslate"><span class="pre">construct</span></code> columns,
+and asymmetric matrices. Normalized
+construct names that match several constructs stay unmapped.</p>
 </section>
 </section>
 

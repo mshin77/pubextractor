@@ -4,6 +4,7 @@ import json
 import re
 from itertools import accumulate
 
+from .codebook import _is_number
 from .confidence import quote_found
 from .fulltext import _heading_name, section_at, split_sentences
 from .highlight import pattern_from_terms
@@ -122,7 +123,7 @@ def _parse(answer):
 
 
 def _valid(field, value):
-    number = isinstance(value, (int, float)) and not isinstance(value, bool)
+    number = _is_number(value)
     checks = {
         'category': lambda: isinstance(value, str) and value in field['values'],
         'multi_category': lambda: (isinstance(value, list) and bool(value)
@@ -160,8 +161,9 @@ def _prompt(name, field, pages, paper_id, model):
     reply = _parse(result['answer'])
     passages = result['passages']
     index = reply.get('passage')
-    cited = (passages[index - 1] if isinstance(index, int) and not isinstance(index, bool)
-             and 1 <= index <= len(passages) else (passages[0] if passages else {}))
+    citation = (isinstance(index, int) and not isinstance(index, bool)
+                and 1 <= index <= len(passages))
+    cited = passages[index - 1] if citation else {}
     where = {'text': cited.get('text', ''), 'pdf_page': cited.get('pdf_page'),
              'printed_page': cited.get('printed_page'), 'paragraph': cited.get('paragraph'),
              'table': cited.get('table'), 'section': cited.get('section', '')}

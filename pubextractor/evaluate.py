@@ -1,7 +1,7 @@
 """Agreement between extracted values and a second coder, per field and per graph point."""
 import numpy as np
 
-from .codebook_table import _openpyxl
+from .codebook_table import _append_text_row, _openpyxl
 from .output import COLUMNS, to_long
 
 AGREEMENT_COLUMNS = ('field', 'n_pairs', 'agreement', 'kappa', 'icc', 'mae', 'bias', 'lower',
@@ -12,6 +12,8 @@ EMPTY = (None, '', 'not_found')
 
 def kappa(a, b):
     """Cohen's kappa for two raters' labels; None with fewer than two pairs or chance agreement 1."""
+    if len(a) != len(b):
+        raise ValueError('labels must have equal length')
     if len(a) < 2:
         return None
     labels, codes = np.unique(np.asarray([*a, *b], dtype=str), return_inverse=True)
@@ -29,6 +31,8 @@ def icc(ratings):
     (MSR - MSE) / (MSR + (k - 1) MSE + k (MSC - MSE) / n).
     """
     y = np.asarray(ratings, dtype=float)
+    if y.ndim != 2 or y.shape[1] < 2 or not np.isfinite(y).all():
+        raise ValueError('ratings must be a finite matrix with at least two raters')
     n, k = y.shape
     if n < 2:
         return None
@@ -42,7 +46,8 @@ def icc(ratings):
 
 def _number(value):
     try:
-        return float(value)
+        number = float(value)
+        return number if np.isfinite(number) else np.nan
     except (TypeError, ValueError):
         return np.nan
 
@@ -90,8 +95,9 @@ def evaluate(extracted, coded, key=('paper_id', 'field'), tolerance=None):
         agree = (sum(pair == (None, None) for pair in pairs) + close.sum() if numeric
                  else (labels[:, 0] == labels[:, 1]).sum())
         spread = 1.96 * difference.std(ddof=1) if len(difference) > 1 else None
-        bias = float(difference.mean()) if numeric else None
-        stats = ({'icc': icc(numbers), 'mae': float(np.abs(difference).mean()), 'bias': bias,
+        bias = float(difference.mean()) if numeric and len(difference) else None
+        stats = ({'icc': icc(numbers),
+                  'mae': float(np.abs(difference).mean()) if len(difference) else None, 'bias': bias,
                   'lower': None if spread is None else bias - spread,
                   'upper': None if spread is None else bias + spread}
                  if numeric else {'kappa': kappa(labels[:, 0], labels[:, 1])})
@@ -130,14 +136,12 @@ def write_coding_sheet(records, path):
     Returns the path written.
     """
     openpyxl = _openpyxl()
-    from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
     book = openpyxl.Workbook()
     sheet = book.active
     sheet.title = 'coding'
     sheet.append(list(SHEET_COLUMNS))
-    [sheet.append([ILLEGAL_CHARACTERS_RE.sub('', v) if isinstance(v, str)
-                   else v if v is None or isinstance(v, (int, float)) else str(v)
-                   for v in row.values()]) for row in to_long(records)]
+    [_append_text_row(sheet, [v if v is None or isinstance(v, (str, int, float)) else str(v)
+                             for v in row.values()]) for row in to_long(records)]
     sheet.freeze_panes = 'A2'
     book.save(path)
     return path
@@ -148,6 +152,10 @@ def read_coding_sheet(path):
     book = _openpyxl().load_workbook(path, read_only=True, data_only=True)
     lines = list(book.worksheets[0].iter_rows(values_only=True))
     book.close()
+    header = lines[0] if lines else ()
+    missing = [column for column in ('paper_id', 'field', 'coded_value') if column not in header]
+    if missing:
+        raise ValueError(f"coding sheet is missing columns: {', '.join(missing)}")
     rows = [dict(zip(lines[0], line)) for line in lines[1:] if any(v is not None for v in line)]
     return [{**{c: v for c, v in row.items() if c != 'coded_value'}, 'value': row.get('coded_value')}
             for row in rows]

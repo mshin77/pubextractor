@@ -24,6 +24,14 @@ def _openpyxl():
     return openpyxl
 
 
+def _append_text_row(sheet, values):
+    from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+
+    sheet.append([ILLEGAL_CHARACTERS_RE.sub('', value) if isinstance(value, str)
+                  else value for value in values])
+    [setattr(cell, 'data_type', 's') for cell in sheet[sheet.max_row] if cell.data_type == 'f']
+
+
 def _cell(value):
     if isinstance(value, str):
         value = value.strip()
@@ -197,8 +205,8 @@ def write_codebook_table(codebook, path):
     sheet = book.active
     sheet.title = 'codebook'
     sheet.append(list(COLUMNS))
-    for row in rows:
-        sheet.append([None if row[column] == '' else row[column] for column in COLUMNS])
+    [_append_text_row(sheet, [None if row[column] == '' else row[column] for column in COLUMNS])
+     for row in rows]
     sheet.freeze_panes = 'A2'
     book.save(path)
     return path

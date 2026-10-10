@@ -35,6 +35,18 @@ def to_wide(records):
     tables = {}
     [tables.setdefault(r['field'], set()).add(r.get('table')) for r in records]
     split = {field for field, seen in tables.items() if len(seen) > 1}
+    sources = [(_column(record, split), record['field'],
+                record.get('table') if record['field'] in split else None,
+                record.get('status') in FLAGGED) for record in records]
+    generated = ([(column, (field, table, False)) for column, field, table, _ in sources]
+                 + [(f'{column}_status', (field, table, True))
+                    for column, field, table, flagged in sources if flagged])
+    columns = {}
+    [columns.setdefault(name, set()).add(source) for name, source in generated]
+    collisions = [name for name, sources in columns.items()
+                  if name == 'paper_id' or len(sources) > 1]
+    if collisions:
+        raise ValueError(f'wide export column collisions: {collisions}')
     papers = dict.fromkeys(r['paper_id'] for r in records)
     rows = {paper: {'paper_id': paper} for paper in papers}
     groups = {}

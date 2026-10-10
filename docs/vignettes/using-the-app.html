@@ -349,20 +349,6 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"></div>
 </nav></div>
-        <div class="sidebar-primary-item">
-<div
-    id="pst-page-navigation-heading-2"
-    class="page-toc tocsection onthispage">
-    <i class="fa-solid fa-list"></i> On this page
-  </div>
-  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#start">Start</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#steps">Steps</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#try-it">Try it</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#help">Help</a></li>
-</ul>
-  </nav></div>
     </div>
   
   
@@ -419,38 +405,15 @@
                   
   <section id="using-the-app">
 <h1>Using the App<a class="headerlink" href="#using-the-app" title="Link to this heading">#</a></h1>
-<section id="start">
-<h2>Start<a class="headerlink" href="#start" title="Link to this heading">#</a></h2>
-<p>Try the web app (demo, short papers) at <a class="reference external" href="https://www.pubextractor.org">https://www.pubextractor.org</a>, or install it locally:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>pubextractor
-</pre></div>
-</div>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pubextractor</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_app</span>
-
-<span class="n">run_app</span><span class="p">()</span>  <span class="c1"># opens http://127.0.0.1:8000</span>
-</pre></div>
-</div>
-<p>Or run <code class="docutils literal notranslate"><span class="pre">pubextractor</span></code> in a terminal.</p>
-<p>From a source checkout, <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">shiny</span> <span class="pre">run</span> <span class="pre">pubextractor/app.py</span></code> starts the same app.</p>
-</section>
-<section id="steps">
-<h2>Steps<a class="headerlink" href="#steps" title="Link to this heading">#</a></h2>
+<p>Open the <a class="reference external" href="https://www.pubextractor.org">web app</a>, or follow <a class="reference internal" href="../getting-started.html"><span class="std std-doc">Getting Started</span></a> to run it locally.</p>
 <ol class="arabic simple">
-<li><p><strong>Papers</strong>: pick Upload Example Files, or Upload Your File for PDF, DOCX, or image files. Extraction starts once papers are added.</p></li>
-<li><p><strong>Codebook</strong>: import the Excel sheet or edit the table in the app. Extraction runs again after each change and keeps coder edits.</p></li>
-<li><p><strong>Model</strong>: rules only by default. A local model or an API model is optional.</p></li>
-<li><p><strong>Review</strong>: check Values, Tables, Trace, and Figures.</p></li>
-<li><p><strong>Export</strong>: download the CSV files. Compare with a second coder’s sheet for agreement.</p></li>
+<li><p><strong>Papers</strong>: load the examples or add PDF, DOCX, or image files.</p></li>
+<li><p><strong>Codebook</strong>: import a sheet or edit the fields.</p></li>
+<li><p><strong>Model</strong>: use rules only, or select a model and check permissions.</p></li>
+<li><p><strong>Review</strong>: confirm extracted values against the source.</p></li>
+<li><p><strong>Export</strong>: download the results.</p></li>
 </ol>
-</section>
-<section id="try-it">
-<h2>Try it<a class="headerlink" href="#try-it" title="Link to this heading">#</a></h2>
-<p>The package ships a codebook (<code class="docutils literal notranslate"><span class="pre">codebook.xlsx</span></code>, <code class="docutils literal notranslate"><span class="pre">codebook.yml</span></code>), a PDF (<code class="docutils literal notranslate"><span class="pre">study-s01.pdf</span></code>), and a DOCX (<code class="docutils literal notranslate"><span class="pre">study-s02.docx</span></code>) in <code class="docutils literal notranslate"><span class="pre">pubextractor/examples/</span></code>. Upload Example Files in Papers loads both papers; the default codebook is <code class="docutils literal notranslate"><span class="pre">codebook.yml</span></code>.</p>
-</section>
-<section id="help">
-<h2>Help<a class="headerlink" href="#help" title="Link to this heading">#</a></h2>
-<p>Details for each step are under <strong>Home</strong> in the app.</p>
-</section>
+<p>Open <strong>Home</strong> for help. On mobile and tablet, select a <strong>Help topic</strong>.</p>
 </section>
 
 

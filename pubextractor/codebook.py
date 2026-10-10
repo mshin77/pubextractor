@@ -1,6 +1,7 @@
 """Codebook fields that say what to extract from each paper and how to check it."""
 import os
 import re
+from math import isfinite
 
 import yaml
 
@@ -14,7 +15,10 @@ def safe_color(value, default):
 
 
 def _is_number(value):
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    try:
+        return isinstance(value, (int, float)) and not isinstance(value, bool) and isfinite(value)
+    except OverflowError:
+        return False
 
 
 def _is_scalar(value):
@@ -29,8 +33,8 @@ def _problems(name, field):
     if not isinstance(field, dict):
         return [f"{name}: field must be a mapping"]
     kind = field.get('type')
-    values = field.get('values') or []
-    terms = field.get('terms') or {}
+    values = [] if field.get('values') is None else field['values']
+    terms = {} if field.get('terms') is None else field['terms']
     span = field.get('range')
     stat = field.get('stat')
     color = field.get('color')
@@ -58,7 +62,9 @@ def _problems(name, field):
          and any(not _is_scalar(key) or _text(key) not in map(_text, values) for key in terms),
          f"{name}: terms name values not in values"),
     ]
-    return [message for bad, message in checks if bad]
+    metadata = [f"{name}: {key} must be text" for key in ('definition', 'query', 'note')
+                if field.get(key) is not None and not isinstance(field[key], str)]
+    return [message for bad, message in checks if bad] + metadata
 
 
 def _read_yaml(path):

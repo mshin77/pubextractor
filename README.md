@@ -44,6 +44,6 @@ See [Quick Start](https://mshin77.github.io/pubextractor/getting-started.html) a
 
 ## Citation
 
-- Shin, M. (2026). *pubextractor: Data extraction for systematic reviews and meta-analyses* (Python package version 0.1.1) [Computer software]. <https://github.com/mshin77/pubextractor>
+- Shin, M. (2026). *pubextractor: Data extraction for systematic reviews and meta-analyses* (Python package version 0.1.2) [Computer software]. <https://github.com/mshin77/pubextractor>
 
 - Shin, M. (2026). *pubextractor: Data extraction for systematic reviews and meta-analyses* [Web application]. <https://www.pubextractor.org>

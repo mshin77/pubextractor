@@ -1,13 +1,12 @@
 # Getting Started
 
-## Installation
+## Install
 
 ```bash
 pip install pubextractor
 ```
 
-
-## Launch the App
+## Launch
 
 ```python
 from pubextractor import run_app
@@ -15,22 +14,8 @@ from pubextractor import run_app
 run_app()
 ```
 
-Or in a terminal:
+Or run `pubextractor` in a terminal. The app opens at <http://127.0.0.1:8000>.
 
-```bash
-pubextractor              # add --port 8001 for another port
-```
+Use `run_app(port=8001)` if that port is occupied.
 
-The app opens in the browser. See [Using the App](vignettes/using-the-app.md) for the steps; **Home** in the app explains each step.
-
-## Use in Python
-
-```python
-from pubextractor import (read_pdf, detect_page_labels, detect_sections, read_codebook_table,
-                          extract_values, to_long, write_csv)
-
-codebook = read_codebook_table("codebook.xlsx")
-pages = detect_sections(detect_page_labels(read_pdf("study.pdf")))
-records = extract_values(pages, codebook, paper_id="S01")
-write_csv(to_long(records), "values.csv")
-```
+Follow [Using the App](vignettes/using-the-app.md) to load papers, review values, and export results.

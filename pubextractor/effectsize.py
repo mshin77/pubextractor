@@ -1,12 +1,20 @@
 """Hedges' g and its sampling variance for group-design comparisons."""
 
 import logging
-from math import copysign, sqrt
+from math import copysign, isfinite, sqrt
+from numbers import Real
 
 logger = logging.getLogger(__name__)
 
 RHO = 0.70
 ICC = {'achievement': 0.20, 'behavioural': 0.10, 'other': 0.10}
+
+
+def _finite_number(value):
+    try:
+        return isinstance(value, Real) and not isinstance(value, bool) and isfinite(value)
+    except OverflowError:
+        return False
 
 
 def hedges_j(df):
@@ -272,6 +280,23 @@ def compute_effect(comparison, methods=METHODS, allow_did=False):
     assumptions, routes = {}, list(comparison['routes'])
     if comparison['treatment'] is None:
         return _record(comparison, None, routes, assumptions, comparison['checks'])
+    values = [(stat, value) for arm in comparison['arms'].values()
+              for time in ('pre', 'post') for stat, value in arm[time].items()
+              if value is not None]
+    invalid = [f'{stat}_invalid' for stat, value in values
+               if not _finite_number(value) or (stat == 'n' and not float(value).is_integer())]
+    invalid += [f'{name}_invalid' for name in ('rho', 'r2', 'icc')
+                if study.get(name) is not None and not _finite_number(study[name])]
+    invalid += ['var_g_invalid'] if inputs.get('var_g') is not None and (
+        not _finite_number(inputs['var_g']) or inputs['var_g'] < 0) else []
+    invalid += ['statistic_implausible'] if any(
+        not _finite_number(test.get('value'))
+        or (stat in ('f', 'mse') and test['value'] < 0)
+        or any(not _finite_number(df) or df <= 0 for df in test.get('df', []))
+        for stat, test in comparison['tests'].items()) else []
+    if invalid:
+        return _record(comparison, None, routes, assumptions,
+                       list(dict.fromkeys(comparison['checks'] + invalid)))
     if clustered:
         _assume(study, 'icc', ICC.get(inputs.get('domain', 'achievement'), ICC['other']),
                 assumptions)

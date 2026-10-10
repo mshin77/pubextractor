@@ -351,9 +351,7 @@
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#load-the-pubextractor-package">Load the pubextractor Package</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#alternatively-launch-and-browse-the-shiny-app">Alternatively, Launch and Browse the Shiny App</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#open-the-app">Open the App</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#citation">Citation</a></li>
 </ul>
   </nav></div>
@@ -389,38 +387,24 @@
                   
   <section id="pubextractor">
 <h1>pubextractor<a class="headerlink" href="#pubextractor" title="Link to this heading">#</a></h1>
-<p>Data extraction for systematic reviews and meta-analyses. Reads PDF, Word, and image files with <a class="reference external" href="https://github.com/jsvine/pdfplumber">pdfplumber</a> and <a class="reference external" href="https://python-docx.readthedocs.io/">python-docx</a>, keeps the page, section, and table cell of every value, and codes them against an Excel codebook in an interactive <a class="reference external" href="https://shiny.posit.co/py/">Shiny</a> interface. Exports effect sizes for group, single-case, and correlation design studies. Companion to <a class="reference external" href="https://github.com/mshin77/pubmlp">pubmlp</a>, which handles screening.</p>
-<section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h2>
+<p>Extract data from papers, review the source evidence, and export results.</p>
+<section id="open-the-app">
+<h2>Open the App<a class="headerlink" href="#open-the-app" title="Link to this heading">#</a></h2>
+<p>Try the <a class="reference external" href="https://www.pubextractor.org">web app</a> with short papers, or run it locally:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>pubextractor
 </pre></div>
 </div>
-<p>From GitHub:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/mshin77/pubextractor.git
-</pre></div>
-</div>
-</section>
-<section id="load-the-pubextractor-package">
-<h2>Load the pubextractor Package<a class="headerlink" href="#load-the-pubextractor-package" title="Link to this heading">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pubextractor</span>
-</pre></div>
-</div>
-</section>
-<section id="alternatively-launch-and-browse-the-shiny-app">
-<h2>Alternatively, Launch and Browse the Shiny App<a class="headerlink" href="#alternatively-launch-and-browse-the-shiny-app" title="Link to this heading">#</a></h2>
-<p>Access the web app (demo, short papers) at <a class="reference external" href="https://www.pubextractor.org">https://www.pubextractor.org</a>.</p>
-<p>Launch and browse the app on the local computer:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pubextractor</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_app</span>
 
 <span class="n">run_app</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>Or in a terminal: <code class="docutils literal notranslate"><span class="pre">pubextractor</span></code>. The app opens at http://127.0.0.1:8000; use <code class="docutils literal notranslate"><span class="pre">run_app(port=8001)</span></code> if that port is in use.</p>
+<p>See <a class="reference internal" href="vignettes/using-the-app.html"><span class="std std-doc">Using the App</span></a> for the steps.</p>
 </section>
 <section id="citation">
 <h2>Citation<a class="headerlink" href="#citation" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p>Shin, M. (2026). <em>pubextractor: Data extraction for systematic reviews and meta-analyses</em> (Python package version 0.1.1) [Computer software]. <a href="https://github.com/mshin77/pubextractor">https://github.com/mshin77/pubextractor</a></p></li>
+<li><p>Shin, M. (2026). <em>pubextractor: Data extraction for systematic reviews and meta-analyses</em> (Python package version 0.1.2) [Computer software]. <a href="https://github.com/mshin77/pubextractor">https://github.com/mshin77/pubextractor</a></p></li>
 <li><p>Shin, M. (2026). <em>pubextractor: Data extraction for systematic reviews and meta-analyses</em> [Web application]. <a href="https://www.pubextractor.org">https://www.pubextractor.org</a></p></li>
 </ul>
 <div class="toctree-wrapper compound">

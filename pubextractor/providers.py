@@ -219,7 +219,7 @@ def make_responder(provider, model, base_url=None, key_env=None, environ=None,
         reply = transport(f"{base}/chat/completions", body, headers, timeout)
         try:
             content = reply['choices'][0]['message']['content']
-            if content is None:
+            if not isinstance(content, str) or not content.strip():
                 raise RuntimeError(f"{redact_endpoint(base)} gave no reply text")
             return content
         except (KeyError, IndexError, TypeError):

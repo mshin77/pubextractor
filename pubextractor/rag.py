@@ -112,8 +112,14 @@ def retrieve(query, chunks, embeddings, model, top_k=5):
     Returns:
         list: top chunks, each with a ``similarity`` value, highest first.
     """
-    query_vector = np.asarray(model.encode([query]))
-    matrix = np.asarray(embeddings)
+    if isinstance(top_k, bool) or not isinstance(top_k, int) or top_k < 1:
+        raise ValueError('top_k must be a positive integer')
+    query_vector = np.atleast_2d(np.asarray(model.encode([query]), dtype=float))
+    matrix = np.asarray(embeddings, dtype=float)
+    if (matrix.ndim != 2 or matrix.shape[0] != len(chunks) or matrix.shape[1] == 0
+            or query_vector.shape != (1, matrix.shape[1])
+            or not np.isfinite(matrix).all() or not np.isfinite(query_vector).all()):
+        raise ValueError('embedding dimensions or values do not match the chunks and query')
     norms = np.linalg.norm(matrix, axis=1) * np.linalg.norm(query_vector)
     norms[norms == 0] = 1e-12
     scores = (matrix @ query_vector.T).ravel() / norms
@@ -178,8 +184,8 @@ def extract_with_rag(text, queries, respond, model, top_k=5, chunk_size=1000,
         raise ValueError("queries must map names to a query string or {'query': str}")
 
     prompt_template = template or PROMPT_TEMPLATE
-    key = (chunk_size, overlap)
-    if cache is not None and cache.get('key') == key:
+    key = (chunk_size, overlap, repr(text))
+    if cache is not None and cache.get('key') == key and cache.get('model') is model:
         chunks, embeddings = cache['chunks'], cache['embeddings']
     else:
         chunks = (chunk_text(text, chunk_size, overlap) if isinstance(text, str)
@@ -188,7 +194,7 @@ def extract_with_rag(text, queries, respond, model, top_k=5, chunk_size=1000,
             raise ValueError("Document has no extractable text; a scanned PDF needs OCR first")
         chunks = [{**chunk, 'anchor': _anchor(chunk)} for chunk in chunks]
         embeddings = build_index(chunks, model)
-        cache is None or cache.update(key=key, chunks=chunks, embeddings=embeddings)
+        cache is None or cache.update(key=key, model=model, chunks=chunks, embeddings=embeddings)
 
     if tracker is not None:
         record = {'verdict': UNCHECKED} if checked is None else checked
@@ -211,6 +217,8 @@ def extract_with_rag(text, queries, respond, model, top_k=5, chunk_size=1000,
         error = None
         try:
             answer = respond(prompt)
+            if not isinstance(answer, str):
+                raise ValueError('model reply must be text')
         except Exception as failure:
             logger.exception(f"Model call failed for {name}")
             answer, error = 'ERROR: model call failed', type(failure).__name__

@@ -357,9 +357,8 @@
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#launch-the-app">Launch the App</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-in-python">Use in Python</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#install">Install</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#launch">Launch</a></li>
 </ul>
   </nav></div>
     </div>
@@ -418,36 +417,22 @@
                   
   <section id="getting-started">
 <h1>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">#</a></h1>
-<section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h2>
+<section id="install">
+<h2>Install<a class="headerlink" href="#install" title="Link to this heading">#</a></h2>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>pubextractor
 </pre></div>
 </div>
 </section>
-<section id="launch-the-app">
-<h2>Launch the App<a class="headerlink" href="#launch-the-app" title="Link to this heading">#</a></h2>
+<section id="launch">
+<h2>Launch<a class="headerlink" href="#launch" title="Link to this heading">#</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pubextractor</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_app</span>
 
 <span class="n">run_app</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>Or in a terminal:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pubextractor<span class="w">              </span><span class="c1"># add --port 8001 for another port</span>
-</pre></div>
-</div>
-<p>The app opens in the browser. See <a class="reference internal" href="vignettes/using-the-app.html"><span class="std std-doc">Using the App</span></a> for the steps; <strong>Home</strong> in the app explains each step.</p>
-</section>
-<section id="use-in-python">
-<h2>Use in Python<a class="headerlink" href="#use-in-python" title="Link to this heading">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pubextractor</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">read_pdf</span><span class="p">,</span> <span class="n">detect_page_labels</span><span class="p">,</span> <span class="n">detect_sections</span><span class="p">,</span> <span class="n">read_codebook_table</span><span class="p">,</span>
-                          <span class="n">extract_values</span><span class="p">,</span> <span class="n">to_long</span><span class="p">,</span> <span class="n">write_csv</span><span class="p">)</span>
-
-<span class="n">codebook</span> <span class="o">=</span> <span class="n">read_codebook_table</span><span class="p">(</span><span class="s2">&quot;codebook.xlsx&quot;</span><span class="p">)</span>
-<span class="n">pages</span> <span class="o">=</span> <span class="n">detect_sections</span><span class="p">(</span><span class="n">detect_page_labels</span><span class="p">(</span><span class="n">read_pdf</span><span class="p">(</span><span class="s2">&quot;study.pdf&quot;</span><span class="p">)))</span>
-<span class="n">records</span> <span class="o">=</span> <span class="n">extract_values</span><span class="p">(</span><span class="n">pages</span><span class="p">,</span> <span class="n">codebook</span><span class="p">,</span> <span class="n">paper_id</span><span class="o">=</span><span class="s2">&quot;S01&quot;</span><span class="p">)</span>
-<span class="n">write_csv</span><span class="p">(</span><span class="n">to_long</span><span class="p">(</span><span class="n">records</span><span class="p">),</span> <span class="s2">&quot;values.csv&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
+<p>Or run <code class="docutils literal notranslate"><span class="pre">pubextractor</span></code> in a terminal. The app opens at <a class="reference external" href="http://127.0.0.1:8000">http://127.0.0.1:8000</a>.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">run_app(port=8001)</span></code> if that port is occupied.</p>
+<p>Follow <a class="reference internal" href="vignettes/using-the-app.html"><span class="std std-doc">Using the App</span></a> to load papers, review values, and export results.</p>
 </section>
 </section>
 

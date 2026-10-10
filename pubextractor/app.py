@@ -120,6 +120,12 @@ HELP_PAGES = {'about': 'About', 'codebook': 'Codebook', 'local_model': 'Local mo
               'tables_and_effect_sizes': 'Tables and effect sizes',
               'figures': 'Single-case graphs', 'evaluation': 'Agreement',
               'trace': 'Trace and provenance', 'support': 'Support'}
+HELP_GROUPS = {'Getting started': ('about', 'codebook', 'recommendations'),
+               'Models and permissions': ('local_model', 'api_keys', 'license_check',
+                                          'copyright', 'privacy'),
+               'Extraction and review': ('tables_and_effect_sizes', 'figures', 'evaluation',
+                                         'trace'),
+               'Support': ('support',)}
 AGREEMENT_KEY = ('paper_id', 'field', 'table', 'row', 'col')
 AGREEMENT_VIEW = ('field', 'n', 'agreement %', 'kappa / ICC', 'MAE', 'hallucinations', 'omissions')
 GRAPH_MODES = {'calibrate': 'Calibrate', 'points': 'Edit points'}
@@ -161,21 +167,33 @@ def help_html(name):
     name = name if name in HELP_PAGES else 'about'
     text = files('pubextractor').joinpath('app_pages', f"{name}.md").read_text(encoding='utf-8')
     body = MarkdownIt('commonmark', {'html': True}).enable('table').render(text)
+    body = body.replace('<table>', '<div class="help-table"><table>').replace(
+        '</table>', '</table></div>')
     return re.sub(r'<a href="(https?:|mailto:)', r'<a target="_blank" rel="noopener" href="\1',
                   body.replace('src="logo.svg"', f'src="{LOGO}"'))
 
 
 def help_view(name, target=None):
-    """One help page; with ``target``, the list of pages beside it, as on Home."""
+    name = name if name in HELP_PAGES else 'about'
+    topic = ui.div(
+        ui.tags.label('Help topic', for_=f'{target or "help_topic"}_select'),
+        ui.tags.select(
+            *[ui.tags.optgroup(*[ui.tags.option(HELP_PAGES[key], value=key,
+                                               selected=key == name) for key in keys], label=group)
+              for group, keys in HELP_GROUPS.items()],
+            id=f'{target or "help_topic"}_select', class_='form-select',
+            onchange=f"Shiny.setInputValue('{target or 'help_topic'}', this.value, "
+                     "{priority: 'event'})"),
+        class_='help-topic' + (' compact' if target else ''))
     page = ui.div(ui.HTML(help_html(name)), class_='help-body')
     if target is None:
-        return page
+        return ui.div(topic, page, class_='help-dialog')
     links = [ui.tags.button(title, type='button',
                             class_='help-item' + (' on' if key == name else ''),
                             onclick=f"Shiny.setInputValue('{target}', '{key}', "
                                     "{priority: 'event'})")
              for key, title in HELP_PAGES.items()]
-    return ui.div(ui.tags.nav(*links, class_='help-nav', aria_label='Help pages'), page,
+    return ui.div(topic, ui.tags.nav(*links, class_='help-nav', aria_label='Help pages'), page,
                   class_='help-view')
 
 
@@ -1067,6 +1085,13 @@ body,table,.shiny-data-grid,.shiny-data-grid :is(table,th,td),.form-control,.for
 .info-btn{display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:0 4px;font-size:12px;font-weight:400;color:#007bc2;vertical-align:middle}
 .info-i{width:15px;height:15px;border:1px solid currentColor;border-radius:50%;display:inline-grid;place-items:center;font:italic 600 10px/1 Georgia,serif}
 .info-btn:hover{text-decoration:underline}
+.help-topic{margin-bottom:20px}
+.help-topic label{display:block;font-weight:600;margin-bottom:8px}
+.help-topic select{min-height:44px;width:100%}
+.help-topic.compact{display:none}
+.help-table{max-width:100%;overflow-x:auto;margin:6px 0 12px}
+.help-table table{margin:0}
+.flow-menu{display:none}
 .help-view{display:grid;grid-template-columns:200px minmax(0,1fr);gap:20px}
 .help-nav{display:flex;flex-direction:column;gap:2px;border-right:1px solid var(--bs-border-color);padding-right:10px}
 .help-item{border:0;border-radius:6px;background:none;text-align:left;padding:6px 10px;font-size:14px;color:#495057}
@@ -1165,16 +1190,31 @@ body.splash-on .busy-overlay{display:none!important}
 .fading-circle>div{position:absolute;inset:0;transform:rotate(calc(var(--i) * 30deg))}
 .fading-circle>div::before{content:"";display:block;margin:0 auto;width:15%;height:15%;background:#007bc2;border-radius:50%;animation:fading-circle 1.2s infinite ease-in-out both;animation-delay:calc(var(--i) * .1s - 1.2s)}
 @keyframes fading-circle{0%,39%,100%{opacity:0}40%{opacity:1}}
+@media (max-width:1024px){
+.help-view{grid-template-columns:minmax(0,1fr);gap:0}
+.help-nav{display:none}
+.help-topic.compact{display:block}
+.help-body{min-width:0}
+.help-body pre{max-width:100%;overflow-x:auto}
+.help-body img{max-width:100%;height:auto}
+}
 @media (max-width:700px){
 .topbar{flex-wrap:wrap;height:auto;padding:6px 12px;gap:6px}
-.flow{order:3;width:100%}
+.flow-menu{display:inline-flex;align-items:center;min-height:44px;padding:8px 12px;border:1px solid var(--bs-border-color);border-radius:6px;background:none;color:#495057}
+.flow{display:none;order:3;width:100%;flex-wrap:wrap;overflow:visible}
+.topbar.menu-open .flow{display:flex}
+.flow-step{min-height:44px}
+.main,.main .card-body{min-width:0}
+.row-tight{flex-wrap:wrap}
+.row-tight .shiny-input-container{max-width:100%}
+.model-grid{grid-template-columns:minmax(0,1fr)}
+.pair{grid-template-columns:minmax(0,1fr)}
+.shiny-data-grid{max-width:100%;overflow-x:auto}
 .flow-step{padding:5px 6px;font-size:13px}
 .flow-step .count{display:none}
 .main{padding:12px}
-.export-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+.export-row{grid-template-columns:minmax(0,1fr)}
 .queue-row{grid-template-columns:1fr 1fr}
-.help-view{grid-template-columns:1fr}
-.help-nav{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--bs-border-color);padding:0 0 6px}
 }
 """
 
@@ -1196,7 +1236,9 @@ def home_button(current):
     """The Home entry above the numbered steps, holding the help pages."""
     return ui.tags.button(ui.span(class_='n'), 'Home', type='button',
                           class_='flow-step home' + (' on' if current else ''),
-                          onclick="Shiny.setInputValue('step', 'home', {priority: 'event'})")
+                          onclick="Shiny.setInputValue('step', 'home', {priority: 'event'}); "
+                                  "document.querySelector('.topbar').classList.remove('menu-open'); "
+                                  "document.getElementById('flow_menu').setAttribute('aria-expanded', 'false')")
 
 
 def step_button(index, key, label, done, current, count=None):
@@ -1205,7 +1247,9 @@ def step_button(index, key, label, done, current, count=None):
         ui.span(ui.HTML('&#10003;') if done else str(index + 1), class_='n'), label,
         ui.span(str(count), class_='count') if count else None,
         type='button', class_='flow-step' + (' done' if done else '') + (' on' if current else ''),
-        onclick=f"Shiny.setInputValue('step', '{key}', {{priority: 'event'}})")
+        onclick=f"Shiny.setInputValue('step', '{key}', {{priority: 'event'}}); "
+                "document.querySelector('.topbar').classList.remove('menu-open'); "
+                "document.getElementById('flow_menu').setAttribute('aria-expanded', 'false')")
 
 
 def _segment(key, label, first, target='review_view'):
@@ -1572,7 +1616,12 @@ app_ui = ui.page_fluid(
            ui.tags.button(ui.HTML('&times;'), type='button', class_='demo-close',
                           aria_label='Close demo note', onclick='this.parentNode.remove()'),
            class_='demo-banner', role='note') if HOSTED else None,
-    ui.div(ui.output_ui('step_list', class_='flow'),
+    ui.div(ui.tags.button(ui.output_ui('menu_label', inline=True), type='button',
+                          id='flow_menu', class_='flow-menu', aria_expanded='false',
+                          aria_controls='step_list',
+                          onclick="const open = this.closest('.topbar').classList.toggle('menu-open'); "
+                                  "this.setAttribute('aria-expanded', String(open))"),
+           ui.output_ui('step_list', class_='flow'),
            ui.output_ui('mode_pill', inline=True),
            ui.tags.button('Start over', type='button', class_='btn btn-outline-secondary btn-sm restart',
                           onclick="if (confirm('Clear all papers, values, and edits and start again?'))"
@@ -1949,6 +1998,11 @@ def server(input, output, session):
         ui.modal_show(ui.modal(ui.output_ui('help_panel'), title='Help', size='xl',
                                easy_close=True, footer=ui.modal_button('Close')))
 
+    @reactive.effect
+    @reactive.event(input.help_topic)
+    def _pick_help():
+        help_shown.set(input.help_topic())
+
     @render.ui
     def help_panel():
         return help_view(help_shown())
@@ -1968,6 +2022,10 @@ def server(input, output, session):
     def mode_pill():
         return ui.span(mode_label(input.model(), input.ollama_model(), input.provider()),
                        class_='mode-pill')
+
+    @render.ui
+    def menu_label():
+        return 'Menu · ' + dict((('home', 'Home'), *STEPS)).get(stage(), 'Home')
 
     @render.ui
     def step_list():

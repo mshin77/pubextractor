@@ -116,7 +116,8 @@ def map_constructs(labels, constructs, overrides=None):
                    if c is not None and c not in constructs])
     if problems:
         raise ValueError('Override problems: ' + '; '.join(problems))
-    by_name = {_normal(c): c for c in constructs}
+    counts = Counter(_normal(c) for c in constructs)
+    by_name = {_normal(c): c for c in constructs if counts[_normal(c)] == 1}
     exact = {label: label for label in labels if label in constructs}
     loose = {label: by_name.get(_normal(label)) for label in labels if label not in exact}
     taken = Counter(loose.values())
@@ -175,7 +176,8 @@ def suggest_mapping(labels, constructs, overrides=None, threshold=SIMILAR):
 def _shared(study, constructs):
     index = {label: i for i, label in enumerate(study['labels'])}
     where = {c: index[label] for label, c in study['mapping'].items()}
-    return np.array([[study['matrix'][where[a], where[b]] if a in where and b in where else np.nan
+    matrix = np.asarray(study['matrix'], dtype=float)
+    return np.array([[matrix[where[a], where[b]] if a in where and b in where else np.nan
                       for b in constructs] for a in constructs])
 
 
@@ -187,18 +189,23 @@ def to_matrices(studies, constructs, folder):
     study did not measure are ``NA``. A matrix whose diagonal is not 1 or
     with |r| > 1 is refused.
     """
+    if 'construct' in constructs or len(set(constructs)) != len(constructs):
+        raise ValueError('Export problems: construct columns repeat or use the reserved construct column')
     problems = ([f"{s['study']}: n missing" for s in studies if s.get('n') is None]
                 + [f"{s['study']}: not a correlation matrix ({', '.join(bad)})" for s in studies
                    for bad in [[c for c in correlation_checks(np.asarray(s['matrix'], dtype=float),
-                                                              'lower', s.get('n'))
-                                if c in ('diagonal not 1', '|r| > 1')]] if bad]
+                                                              'full', s.get('n'))
+                                if c in ('diagonal not 1', '|r| > 1', 'not symmetric')]] if bad]
                 + [f"{s['study']}: two labels map to one construct" for s in studies
                    if len(set(s['mapping'].values())) < len(s['mapping'])])
     if problems:
         raise ValueError('Export problems: ' + '; '.join(problems))
+    files = [re.sub(r'[^\w.-]', '_', str(s['study'])) for s in studies]
+    names = [file.casefold().rstrip(' .') for file in files] + ['n']
+    if len(set(names)) != len(names):
+        raise ValueError('Export problems: matrix filenames collide with another study or n.csv')
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
-    files = [re.sub(r'[^\w.-]', '_', str(s['study'])) for s in studies]
     for study, file in zip(studies, files):
         write_csv([{'construct': a, **{b: 'NA' if np.isnan(r) else f'{r:.6g}'
                                        for b, r in zip(constructs, row)}}

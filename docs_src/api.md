@@ -201,6 +201,11 @@
 
 ## Agreement
 
+Numeric fields with no valid paired values return empty error and bias metrics. `kappa`
+requires equal-length label lists; `icc` requires finite ratings from at least two raters.
+Excel exports preserve text beginning with `=` as literal text. Coding-sheet imports
+require `paper_id`, `field`, and `coded_value` columns.
+
 | Name | Signature | Purpose |
 |---|---|---|
 | `AGREEMENT_COLUMNS` | `AGREEMENT_COLUMNS` | Column order of `evaluate`. |
@@ -210,3 +215,17 @@
 | `graph_agreement` | `graph_agreement(extracted_rows, manual_rows, y_range=None)` | Point-level error of extracted graph rows against a manual digitizer. |
 | `write_coding_sheet` | `write_coding_sheet(records, path)` | Write records as an .xlsx for a second coder: the long columns and an empty ``coded_value``. |
 | `read_coding_sheet` | `read_coding_sheet(path)` | Coded records from a filled coding sheet, with the coder's ``coded_value`` as ``value``. |
+
+## Input and export checks
+
+Codebook definitions, queries, and notes must be text; range bounds must be finite.
+Model extraction keeps non-finite numbers and invalid passage citations under review.
+Retrieval requires a positive integer `top_k` and finite embeddings with matching
+dimensions. A retrieval cache tracks document content and encoder identity.
+
+Effect calculations return `not_computed` with named checks for malformed numeric
+inputs, fractional sample sizes, negative test statistics, or invalid variance overrides.
+Wide exports reject generated column collisions. Matrix exports reject filename
+collisions, including the reserved `n.csv`, repeated or reserved `construct` columns,
+and asymmetric matrices. Normalized
+construct names that match several constructs stay unmapped.
