@@ -505,12 +505,22 @@ class TestImageTables:
         older = [{**MANUAL[0], 'value': 19}, FLAG, {**MANUAL[0], 'table': 4}]
         kept = shiny_app.replace_entries(older, 'S01', 3, MANUAL)
         assert [r['value'] for r in kept if r['table'] == 3 and r.get('stat')] == [20]
-        assert FLAG in kept and {**MANUAL[0], 'table': 4} in kept
+        assert FLAG not in kept and {**MANUAL[0], 'table': 4} in kept
 
     def test_saved_vision_values_replace_earlier_entries(self):
         older = [{**MANUAL[0], 'value': 19, 'layer': 'vision'}, FLAG]
         kept = shiny_app.replace_entries(older, 'S01', 3, MANUAL)
         assert [r['value'] for r in kept if r['table'] == 3 and r.get('stat')] == [20]
+
+    def test_saved_values_remove_missing_table_placeholder(self):
+        missing = {'paper_id': 'S01', 'table': 3, 'field': 'table', 'status': 'not_found'}
+        other = {**missing, 'paper_id': 'S02'}
+        assert shiny_app.replace_entries([missing, other], 'S01', 3, MANUAL) == [other] + MANUAL
+        assert shiny_app.replace_entries([missing], 'S01', 3, []) == [missing]
+
+    def test_rerun_keeps_entries_without_missing_table_placeholder(self):
+        missing = {'paper_id': 'S01', 'table': 3, 'field': 'table', 'status': 'not_found'}
+        assert shiny_app.keep_human([missing], MANUAL) == MANUAL
 
     def test_new_run_tracker_keeps_human_steps(self):
         old = shiny_app.px.ProvenanceTracker('fulltext', 'extraction')

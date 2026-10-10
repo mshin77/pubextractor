@@ -1,3 +1,8 @@
+# pubextractor 0.1.3
+
+- Clarifies review results and makes copyright checks optional.
+- Fixes responsive tables, figure controls, and logo layouts.
+
 # pubextractor 0.1.2
 
 - Prevents data collisions and validates extraction inputs.

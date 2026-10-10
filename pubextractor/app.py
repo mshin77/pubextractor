@@ -475,11 +475,13 @@ def entry_rows(records):
 
 def replace_entries(records, paper_id, table, new):
     """Records with a coder's earlier entries for one table swapped for ``new``."""
+    new = list(new)
     return [r for r in records
             if not (r.get('paper_id') == paper_id and r.get('table') == table
-                    and r.get('layer') in ('human', 'vision') and r.get('row') is None
-                    and r.get('stat'))
-            ] + list(new)
+                    and (r.get('layer') in ('human', 'vision') and r.get('row') is None
+                         and r.get('stat') or new and r.get('field') == 'table'
+                         and r.get('status') == 'not_found'))
+            ] + new
 
 
 def record_key(record):
@@ -490,7 +492,10 @@ def keep_human(new, old):
     """New records with the coder's and vision model's earlier values re-applied."""
     mine = {record_key(r): r for r in old if r.get('layer') in ('human', 'vision')}
     keys = {record_key(r) for r in new}
-    return ([mine.get(record_key(r), r) for r in new]
+    entered = {(r.get('paper_id'), r.get('table')) for r in mine.values() if r.get('stat')}
+    return ([mine.get(record_key(r), r) for r in new
+             if not (r.get('field') == 'table' and r.get('status') == 'not_found'
+                     and (r.get('paper_id'), r.get('table')) in entered)]
             + [r for key, r in mine.items() if key not in keys])
 
 
@@ -1067,12 +1072,15 @@ body,table,.shiny-data-grid,.shiny-data-grid :is(table,th,td),.form-control,.for
 .row-tight .shiny-input-container{margin-bottom:0}
 .row-tight .input-group .btn,.row-tight .input-group .form-control{padding:.25rem .5rem;font-size:14px;line-height:1.5}
 .btn-outline-primary:focus:not(:hover){background:none;color:#007bc2}
-.mode .btn{border-color:#007bc2;color:#007bc2}
+.mode{flex-shrink:0}
+.mode .btn{border-color:#007bc2;color:#007bc2;white-space:nowrap}
+.graph-header{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.graph-header #graph_caption{flex:1}
+#graph_tools{display:flex;align-items:center;flex-wrap:nowrap;flex-basis:100%;gap:4px;overflow-x:auto}
 .mode .btn:hover{background:#e7f3fa;color:#007bc2}
 .mode .btn.active{background:#007bc2;color:#fff;border-color:#007bc2}
 .sdot{width:.55rem;height:.55rem;border-radius:50%;flex-shrink:0;display:inline-block}
 .topbar{display:flex;align-items:center;gap:18px;padding:0 16px;height:46px;border-bottom:1px solid var(--bs-border-color)}
-.mode-pill{margin-left:auto;display:inline-flex;align-items:center;gap:5px;border:1px solid var(--bs-border-color);border-radius:999px;padding:2px 10px;font-size:12px;background:#f8f9fa}
 .help-page .help-body{max-height:none;overflow:visible}
 .flow-step.home .n{display:none}
 .modal-content:has(.copyright-check) .modal-header{padding:10px 14px;border:0}
@@ -1105,7 +1113,7 @@ body,table,.shiny-data-grid,.shiny-data-grid :is(table,th,td),.form-control,.for
 .help-body th{background:#f8f9fa;font-weight:600}
 .help-body pre{background:var(--bs-tertiary-bg);border-radius:6px;padding:8px 10px;font-size:13.5px}
 .help-body code{font-size:.95em}
-.help-body pre code{color:inherit;font-size:inherit}
+.help-body pre code{color:inherit;font-size:inherit;padding:0}
 .shell{min-height:calc(100vh - 46px)}
 .flow{display:flex;flex-direction:row;gap:2px;min-width:0;overflow-x:auto}
 .flow-step{display:flex;gap:6px;align-items:center;padding:5px 8px;border:0;border-radius:6px;background:none;color:#495057;white-space:nowrap;font-size:14px}
@@ -1118,14 +1126,17 @@ body,table,.shiny-data-grid,.shiny-data-grid :is(table,th,td),.form-control,.for
 .main{flex:1;min-width:0;padding:12px 16px}
 .main .tab-content>.tab-pane{display:none}
 .main .tab-content>.active{display:grid;gap:12px}
-.main .card{margin-bottom:0;border-radius:6px}
+.main .card{margin-bottom:0;border-radius:6px;min-width:0;max-width:100%}
 .main .card-header{padding:8px 12px;font-weight:600}
-.main .card-body{padding:10px 12px;gap:6px}
+.main .card-body{padding:10px 12px;gap:6px;min-width:0}
 .main .card-footer{padding:6px 12px}
 .main .shiny-input-container{margin-bottom:.5rem}
 .main .bslib-grid{gap:12px;margin-bottom:0}
 .main .alert{padding:6px 10px;margin-bottom:0;width:fit-content}
-.main .shiny-data-grid{max-height:420px}
+.main .shiny-data-grid{width:100%;min-width:0;max-width:100%;max-height:420px;overflow:auto;overscroll-behavior-x:contain}
+.shiny-data-grid table{min-width:100%}
+.shiny-data-grid :is(th,td){white-space:nowrap}
+.shiny-data-grid .shiny-input-container{max-width:100%}
 .main .nav-pills .nav-link{padding:4px 10px}
 .row-tight{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .demo-banner{background:#fff7e6;color:#7a4b00;font-size:13px;padding:4px 16px;border-bottom:1px solid #f0d9a8}
@@ -1133,8 +1144,7 @@ body,table,.shiny-data-grid,.shiny-data-grid :is(table,th,td),.form-control,.for
 .demo-banner{position:relative;padding-right:32px}
 .demo-close{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;color:inherit;font-size:16px;line-height:1;padding:0 4px;cursor:pointer;opacity:.7}
 .demo-close:hover,.demo-close:focus-visible{opacity:1}
-.topbar .restart{margin-left:8px;padding:1px 10px;font-size:13px}
-.topbar #mode_pill{margin-left:auto}
+.topbar .restart{margin-left:auto;padding:1px 10px;font-size:13px}
 .arm-roles .arm-table{font-weight:600;margin:10px 0 4px}
 .arm-roles .arm-name{min-width:12rem}
 .arm-roles details{margin:4px 0 0 0}
@@ -1196,7 +1206,7 @@ body.splash-on .busy-overlay{display:none!important}
 .help-topic.compact{display:block}
 .help-body{min-width:0}
 .help-body pre{max-width:100%;overflow-x:auto}
-.help-body img{max-width:100%;height:auto}
+.help-body img{max-width:100%;height:auto;display:block}
 }
 @media (max-width:700px){
 .topbar{flex-wrap:wrap;height:auto;padding:6px 12px;gap:6px}
@@ -1320,13 +1330,16 @@ papers_page = _pane(
     'papers',
     ui.div(
         ui.input_select('paper_source', None, PAPER_SOURCES, width='220px'),
+        ui.input_action_button('copyright_check', 'Check copyright (optional)') if HOSTED else None,
         ui.panel_conditional(
-            "input.paper_source === 'upload'" + (' && input.copyright_ok' if HOSTED else ''),
+            "input.paper_source === 'upload'" + (' && !input.copyright_restricted' if HOSTED else ''),
             ui.div(ui.input_file('files', None, multiple=True, accept=list(READABLE),
                                  width='420px', button_label='Add files'),
                    ui.span('PDF, DOCX, or image · several at once', class_='note'),
                    class_='row-tight')),
         class_='row-tight'),
+    ui.p('Upload only papers permitted on a hosted service. Subscription papers stay local.',
+         class_='note') if HOSTED else None,
     ui.output_ui('upload_list'),
     ui.card(
         ui.card_header('Papers'),
@@ -1383,6 +1396,7 @@ review_page = _pane(
             ui.panel_conditional("input.review_view === 'figures'", ui.output_ui('graph_picker')),
             class_='row-tight ms-auto'),
         class_='row-tight'),
+    ui.output_ui('review_note'),
     ui.card(ui.div(ui.span('Designs', class_='note'), info_button('recommendations'),
                    ui.span('suggested from each Method; confirm or change', class_='note'),
                    class_='row-tight'),
@@ -1442,23 +1456,21 @@ review_page = _pane(
                              ui.nav_panel('Qualitative', value='qual'), id='design'),
               ui.output_ui('trace_body')),
         _pane('figures',
+              ui.div(ui.output_text('graph_available'), class_='visually-hidden', aria_hidden='true'),
               ui.layout_columns(
                   ui.card(
                       ui.card_header(ui.output_text('graph_caption', inline=True),
                                      info_button('figures'),
-                                     ui.div(*[_segment(key, label, key == 'original', 'graph_show')
-                                              for key, label in GRAPH_SHOWS.items()],
-                                            class_='btn-group btn-group-sm ms-auto mode',
-                                            role='group', aria_label='Figure view'),
-                                     ui.div(*[_segment(key, label, key == 'calibrate', 'graph_mode')
-                                              for key, label in GRAPH_MODES.items()],
-                                            class_='btn-group btn-group-sm mode',
-                                            role='group', aria_label='Click mode')),
+                                     ui.output_ui('graph_tools'), class_='graph-header'),
                       ui.output_ui('graph_view'),
-                      ui.span(GRAPH_NOTE, class_='note')),
-                  ui.div(
-                      ui.card(
+                      ui.panel_conditional("output.graph_available === 'true'",
+                                           ui.span(GRAPH_NOTE, class_='note'))),
+                  ui.panel_conditional("output.graph_available === 'true'", ui.div(
+                      ui.panel_conditional("input.graph_type !== 'other' && input.graph_type !== 'flow'", ui.card(
                           ui.card_header('Axes', ui.output_ui('graph_status', inline=True)),
+                          ui.p('Click two labeled ticks on each axis, then enter their printed '
+                               'values. Calibration converts image positions to data values.',
+                               class_='note'),
                           *[ui.TagList(ui.div(TICK_AXES[key], class_='note')
                                        if key in TICK_AXES else None,
                                        ui.div(ui.span(f'tick {key[1]}', class_='note'),
@@ -1467,7 +1479,7 @@ review_page = _pane(
                                                             class_='form-control form-control-sm'),
                                               ui.input_numeric(f"tick_{key}", None, None),
                                               class_='tick'))
-                            for key in TICKS]),
+                            for key in TICKS])),
                       ui.card(
                           ui.card_header('Study', info_button('recommendations')),
                           ui.input_select('graph_type', None, FIGURE_KINDS, width='100%'),
@@ -1509,13 +1521,14 @@ review_page = _pane(
                               ui.div('Kept with its caption; no values read.', class_='note')),
                           ui.input_action_button('graph_save', 'Save graph data',
                                                  class_='btn-primary btn-sm')),
-                      class_='d-grid gap-3 align-content-start'),
+                      class_='d-grid gap-3 align-content-start')),
                   col_widths=(8, 4)),
-              ui.card(
+              ui.panel_conditional("output.graph_available === 'true'", ui.card(
                   ui.card_header('Graph data', ui.output_ui('graph_count', inline=True),
-                                 ui.download_button('dl_graph', 'Download scdbayes CSV',
-                                                    class_='btn-outline-primary btn-sm ms-auto')),
-                  ui.output_data_frame('graph_grid'))),
+                                 ui.panel_conditional("input.graph_type === 'scd_line'",
+                                     ui.download_button('dl_graph', 'Download scdbayes CSV',
+                                                        class_='btn-outline-primary btn-sm ms-auto'))),
+                  ui.output_data_frame('graph_grid')))),
         id='review_page'),
 )
 
@@ -1558,8 +1571,8 @@ export_page = _pane(
 )
 
 QUEUE_JS = """$(document).on('shiny:connected', function () {
-  Shiny.addCustomMessageHandler('copyright_ok', function (ok) {
-    Shiny.setInputValue('copyright_ok', ok);
+  Shiny.addCustomMessageHandler('copyright_restricted', function (restricted) {
+    Shiny.setInputValue('copyright_restricted', restricted);
   });
   Shiny.addCustomMessageHandler('queue_mark', function (paper) {
     document.querySelectorAll('.queue-row').forEach(function (row) {
@@ -1622,7 +1635,6 @@ app_ui = ui.page_fluid(
                           onclick="const open = this.closest('.topbar').classList.toggle('menu-open'); "
                                   "this.setAttribute('aria-expanded', String(open))"),
            ui.output_ui('step_list', class_='flow'),
-           ui.output_ui('mode_pill', inline=True),
            ui.tags.button('Start over', type='button', class_='btn btn-outline-secondary btn-sm restart',
                           onclick="if (confirm('Clear all papers, values, and edits and start again?'))"
                                   " location.reload()"),
@@ -1748,36 +1760,38 @@ def server(input, output, session):
         kept_roles.difference_update({key for key in kept_roles if key[0] in paper_ids})
 
     @reactive.effect
-    @reactive.event(input.paper_source)
+    @reactive.event(input.copyright_check)
     def _ask_copyright():
-        if HOSTED and input.paper_source() == 'upload' and not cleared['copyright']:
+        if HOSTED:
             ui.modal_show(ui.modal(
                 ui.div(ui.input_radio_buttons('copyright_pick', 'Which describes these papers?',
                                               COPYRIGHT_CHOICES, selected='unsure'),
                        ui.p('Subscription papers stay on the computer that holds them.',
                             class_='note'), class_='copyright-check'),
-                title='Papers and copyright', easy_close=False, size='s',
-                footer=ui.TagList(ui.modal_button('Cancel'),
+                title='Papers and copyright', easy_close=True, size='s',
+                footer=ui.TagList(ui.input_action_button('copyright_cancel', 'Cancel'),
                                   ui.input_action_button('copyright_go', 'Continue',
                                                          class_='btn-primary'))))
 
-    cleared = {'copyright': False}
-
     @reactive.effect
     @reactive.event(input.copyright_go)
-    def _copyright_go():
+    async def _copyright_go():
         pick = input.copyright_pick()
         ui.modal_remove()
+        await session.send_custom_message('copyright_restricted', pick == 'subscription')
         if pick in ('open_access', 'personal'):
-            cleared['copyright'] = True
             ui.update_select('access', selected=pick)
-            ui.update_select('license_type', selected='cc-by') if pick == 'open_access' else None
-            notify('License set to open access, CC BY; change it in Model if the papers use '
-                   'another license.' if pick == 'open_access'
+            notify('Access set to open access. Select the stated license in Model.' if pick == 'open_access'
                    else 'License set to personal copy.')
-            return session.send_custom_message('copyright_ok', True)
-        ui.update_select('paper_source', selected='')
-        notify(STOP_UPLOAD, 'warning')
+            return
+        notify(STOP_UPLOAD if pick == 'subscription' else
+               'Upload only papers permitted on a hosted service. AI access still requires '
+               'confirmed license settings.', 'warning')
+
+    @reactive.effect
+    @reactive.event(input.copyright_cancel)
+    def _cancel_upload():
+        ui.modal_remove()
 
     async def _add_papers(uploads, examples=False):
         if HOSTED and not examples:
@@ -2019,11 +2033,6 @@ def server(input, output, session):
         return ui.div(help_view(home_shown(), 'home_pick'), class_='help-page')
 
     @render.ui
-    def mode_pill():
-        return ui.span(mode_label(input.model(), input.ollama_model(), input.provider()),
-                       class_='mode-pill')
-
-    @render.ui
     def menu_label():
         return 'Menu · ' + dict((('home', 'Home'), *STEPS)).get(stage(), 'Home')
 
@@ -2251,6 +2260,24 @@ def server(input, output, session):
         pages = papers().get(input.view_paper(), {}).get('pages', [])
         index = input.view_page() or 'all'
         return pages if not index.isdigit() else pages[int(index):int(index) + 1]
+
+    @render.ui
+    def review_note():
+        view = input.review_view() if 'review_view' in input else 'values'
+        notes = {
+            'values': 'Values lists codebook matches alongside the paper text. Review means '
+                      'a candidate needs checking. Not found means no supported match was '
+                      'detected; inspect the source before recording it as not reported. '
+                      'Refused means the selected license or model route prevented extraction.',
+            'tables': 'Tables lists detected numeric cells. Check labels and values, then accept '
+                      'the table and compute effect sizes. A paper without a detected table may '
+                      'report results in text or images; enter image-table values below.',
+            'trace': 'Trace shows the evidence and extraction steps for a selected value. '
+                     'Use it to check how the value was obtained and why it needs review.',
+            'figures': 'Figures shows detected figures from PDF or DOCX papers. Confirm the '
+                       'study design, check the figure type, calibrate numeric axes, and save '
+                       'data. SCD points export to scdbayes; other figure types appear in Tables.'}
+        return ui.p(notes.get(view, notes['values']), class_='note')
 
     @render.ui
     def view_key():
@@ -2775,10 +2802,10 @@ def server(input, output, session):
     def _all_graphs():
         found = {paper_id: figure_items[paper_id] if paper_id in figure_items
                  else figure_items.setdefault(
-                     paper_id, attempt(px.figure_images, papers()[paper_id]['path'])[0])
+                     paper_id, attempt(px.figure_images, papers()[paper_id]['path']))
                  for paper_id in papers() if paper_id == input.view_paper()}
         return {f"{paper_id}|{i}": (paper_id, item)
-                for paper_id, items in found.items() for i, item in enumerate(items)}
+                for paper_id, (items, problem) in found.items() for i, item in enumerate(items)}
 
     def _picked_graph():
         key = input.graph_pick() if 'graph_pick' in input else None
@@ -2821,18 +2848,54 @@ def server(input, output, session):
                 else ui.span('No figure found.', class_='note'))
 
     @render.text
+    def graph_available():
+        paper_id, item, state = _picked_graph()
+        return 'true' if item and paper_id in confirmed() else 'false'
+
+    @render.text
     def graph_caption():
         item = _picked_graph()[1]
         return (item['caption'] or f"Figure {item['figure']}") if item else 'Figure'
+
+    @render.ui
+    def graph_tools():
+        paper_id, item, state = _picked_graph()
+        if not item or paper_id not in confirmed():
+            return None
+        kind = input.graph_type()
+        return ui.TagList(
+            ui.div(*[_segment(key, label, key == 'original', 'graph_show')
+                     for key, label in GRAPH_SHOWS.items()
+                     if key == 'original' or kind == 'scd_line'],
+                   class_='btn-group btn-group-sm ms-auto mode', role='group',
+                   aria_label='Figure view'),
+            ui.div(*[_segment(key, label, key == 'calibrate', 'graph_mode')
+                     for key, label in GRAPH_MODES.items()
+                     if key == 'calibrate' or kind == 'scd_line'],
+                   class_='btn-group btn-group-sm mode', role='group',
+                   aria_label='Click mode') if kind not in ('other', 'flow') else None)
 
     @render.ui
     def graph_view():
         graph_version()
         paper_id, item, state = _picked_graph()
         rows = graph_saved().get(input.graph_pick() if item else None)
-        replot = 'graph_show' in input and input.graph_show() == 'replot'
-        return (ui.p('Figures are read from PDF or DOCX papers.', class_='note') if not item
-                else ui.p(CONFIRM_FIRST, class_='note') if paper_id not in confirmed()
+        replot = input.graph_type() == 'scd_line' and 'graph_show' in input and input.graph_show() == 'replot'
+        paper = papers().get(input.view_paper()) or {}
+        problem = figure_items.get(input.view_paper(), ([], ''))[1]
+        empty = ('Add a PDF or DOCX paper and run extraction to inspect its figures.' if not paper
+                 else 'Standalone images appear in Tables → Image tables. For figure '
+                      'digitization, add a PDF or DOCX containing the figure.'
+                 if Path(paper['path']).suffix.lower() in px.tables.IMAGE_FILES
+                 else 'Figure reading could not complete for this file. Check that the PDF or '
+                      'DOCX opens correctly, then retry. This is a reading issue, not evidence '
+                      'that the paper contains no figures.' if problem
+                 else 'No figure was detected in this paper. It may contain no figures, or its '
+                      'layout may prevent detection. Check the original PDF or DOCX; this view '
+                      'does not establish that results are missing.')
+        return (ui.p(empty, class_='note') if not item
+                else ui.p('Figure detected. Confirm this paper’s design in Designs above to '
+                          'open the figure and data controls.', class_='note') if paper_id not in confirmed()
                 else graph_figure(item['png'], state) if not replot
                 else replot_figure(rows) if rows
                 else ui.p('Save graph data to replot it.', class_='note'))
@@ -2908,7 +2971,7 @@ def server(input, output, session):
     def _graph_click():
         state = _picked_graph()[2]
         click = input.graph_click()
-        editing = 'graph_mode' in input and input.graph_mode() == 'points'
+        editing = input.graph_type() == 'scd_line' and 'graph_mode' in input and input.graph_mode() == 'points'
         if not state or editing and not state['panels']:
             return
         points = toggle_point([q for p in state['panels'] for q in p['points']], click['x'],
@@ -2924,6 +2987,10 @@ def server(input, output, session):
     @guarded('Saving graph data')
     def _graph_save():
         paper_id, item, state = _picked_graph()
+        if not item:
+            notify('No detected figure is selected. Add a PDF or DOCX containing a figure.',
+                   'warning')
+            return
         calibration, problem = graph_calibration() or (None, 'click two ticks per axis and '
                                                              'type their values first')
         kind = input.graph_type()

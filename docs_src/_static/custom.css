@@ -2,3 +2,45 @@ html {
     --pst-color-link: #2A6FA8;
     --pst-color-link-hover: #1A4A73;
 }
+
+.app-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 24px 0 12px;
+}
+.app-action {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 18px;
+    border: 1px solid #2A6FA8;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+}
+.app-action.primary {
+    color: #fff;
+    background: #2A6FA8;
+}
+.app-action.primary:hover {
+    color: #fff;
+    background: #1A4A73;
+}
+.review-steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+    padding: 24px 0;
+    margin: 20px 0 12px;
+    border-top: 1px solid var(--pst-color-border);
+    border-bottom: 1px solid var(--pst-color-border);
+}
+.review-steps p {
+    margin: 8px 0 0;
+}
+@media (max-width: 700px) {
+    .review-steps {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
