@@ -2,6 +2,8 @@
 
 ## Start
 
+Try the web app (demo, short papers) at <https://www.pubextractor.org>, or install it locally:
+
 ```bash
 pip install pubextractor
 ```
