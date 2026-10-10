@@ -6,6 +6,7 @@ extensions = [
     "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx.ext.githubpages",
 ]
 
 myst_enable_extensions = [

@@ -7,7 +7,7 @@ authors:
     given-names: Mikyung
     email: shin.mikyung@gmail.com
     orcid: "https://orcid.org/0000-0001-7907-9193"
-version: "0.1.0"
+version: "0.1.1"
 abstract: "Reads full-text PDFs with page anchors, extracts coded values through rules, semantic similarity, and language models, and checks per paper where its text may be processed. Exports effect sizes for group, single-case, and correlation design studies."
 license: MIT
 url: "https://github.com/mshin77/pubextractor"

@@ -6,20 +6,24 @@ Run with ``pubextractor.run_app()`` or ``python -m shiny run pubextractor/app.py
 import argparse
 import asyncio
 import base64
+import hashlib
 import html
 import inspect
 import json
 import os
 import re
+import secrets
 import shutil
 import sys
 import tempfile
+import time
 import zlib
 from collections import Counter
 from functools import cache, wraps
 from importlib.resources import files
 from itertools import groupby
 from pathlib import Path
+from urllib.parse import quote
 
 # shiny run puts this folder first on sys.path, where statistics.py would shadow the stdlib module
 _HERE = Path(__file__).resolve().parent
@@ -56,7 +60,8 @@ STATUS_COLORS = {'extracted': '#198754', 'review': '#e5a100', 'not_found': '#6c7
                   'refused': '#dc3545'}
 STATUS_BADGES = {'extracted': 'text-bg-success', 'review': 'text-bg-warning',
                  'not_found': 'text-bg-secondary', 'refused': 'text-bg-danger'}
-API_DEFAULTS = {'openai': 'gpt-4.1-mini', 'gemini': 'gemini-2.5-flash'}
+API_DEFAULTS = {'openai': 'gpt-4.1-mini',
+                'gemini': os.environ.get('GEMINI_MODEL', '').strip() or 'gemini-2.5-flash'}
 LICENSES = {'': 'None stated', 'cc-by': 'CC BY', 'cc-by-sa': 'CC BY-SA', 'cc0': 'CC0',
             'public-domain': 'Public domain', 'cc-by-nc': 'CC BY-NC', 'cc-by-nd': 'CC BY-ND',
             'cc-by-nc-sa': 'CC BY-NC-SA', 'cc-by-nc-nd': 'CC BY-NC-ND'}
@@ -69,6 +74,18 @@ IMAGE_KINDS = {suffix.lstrip('.') for suffix in px.tables.IMAGE_FILES}
 SKIP_REASON = 'only PDF, DOCX, or image'
 SKIP_ERROR = 'only PDF, DOCX, or image files are read'
 UPLOAD_COLUMNS = ('paper', 'file', 'size', 'status')
+HOSTED = os.environ.get('PUBEXTRACTOR_HOSTED', '').strip().lower() in ('1', 'true', 'yes', 'on')
+HOSTED_FILES, HOSTED_PAGES, HOSTED_BYTES = 3, 20, 10 * 1024 ** 2
+COPYRIGHT_CHOICES = {'open_access': 'Open access (CC BY or similar)',
+                     'personal': 'My own paper or preprint',
+                     'subscription': 'Subscription paper from a journal', 'unsure': 'Not sure'}
+STOP_UPLOAD = ('Subscription papers stay on the computer that holds them: install pubextractor '
+               'and run it locally.')
+DEMO_NOTE = ('Demo: short papers only (up to 3 files, 20 pages or 10 MB each). Upload only papers '
+             'that may be shared; files are deleted when the page closes. ')
+AI_LIMITS = {'session': ('PUBEXTRACTOR_AI_SESSION_CALLS', 20), 'client': ('PUBEXTRACTOR_AI_CLIENT_CALLS', 20),
+             'hour': ('PUBEXTRACTOR_AI_SHARED_CALLS', 60), 'day': ('PUBEXTRACTOR_AI_SHARED_DAILY', 300)}
+AI_CALLS = []
 READ_COLUMNS = ('paper', 'file', 'size', 'status', 'design', 'pages', 'tables', 'image tables',
                 'text', 'extracted', 'review', 'error')
 CONFIRM_FIRST = 'Confirm the design first.'
@@ -96,12 +113,13 @@ VISION_NOTE = ('Reading with a vision model sends the page crop under the licens
 ROW_COLUMNS = ('field', 'type', 'values', 'search terms', 'stat', 'range', 'definition',
                'question')
 RANGE_TEXT = re.compile(r'\s*(-?\d+(?:\.\d+)?)\s*(?:-|to|,)\s*(-?\d+(?:\.\d+)?)\s*')
-HELP_PAGES = {'about': 'About', 'recommendations': 'Recommendations',
-              'local_model': 'Local model', 'api_keys': 'API keys',
-              'license_check': 'License check', 'codebook': 'Codebook',
+HELP_PAGES = {'about': 'About', 'codebook': 'Codebook', 'local_model': 'Local model',
+              'api_keys': 'API keys', 'license_check': 'License check',
+              'copyright': 'Papers and copyright', 'privacy': 'Privacy',
+              'recommendations': 'Recommendations',
               'tables_and_effect_sizes': 'Tables and effect sizes',
               'figures': 'Single-case graphs', 'evaluation': 'Agreement',
-              'trace': 'Trace and provenance', 'privacy': 'Privacy', 'support': 'Support'}
+              'trace': 'Trace and provenance', 'support': 'Support'}
 AGREEMENT_KEY = ('paper_id', 'field', 'table', 'row', 'col')
 AGREEMENT_VIEW = ('field', 'n', 'agreement %', 'kappa / ICC', 'MAE', 'hallucinations', 'omissions')
 GRAPH_MODES = {'calibrate': 'Calibrate', 'points': 'Edit points'}
@@ -115,8 +133,21 @@ GRAPH_NOTE = ('Calibrate: click two x-axis ticks, then two y-axis ticks, and typ
               'Edit points: click to add, click a point to remove.')
 TICKS = ('x1', 'x2', 'y1', 'y2')
 TICK_AXES = {'x1': 'x (session)', 'y1': 'y (outcome)'}
-FAVICON = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E"
-           "%3Crect width='16' height='16' rx='3' fill='%23264653'/%3E%3C/svg%3E")
+LOGO = 'data:image/svg+xml,' + quote(files('pubextractor').joinpath('app_pages', 'logo.svg')
+                                      .read_text(encoding='utf-8'), safe="=:/' ")
+# the logo's mark without its word, square for a browser tab
+FAVICON = 'data:image/svg+xml,' + quote(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='2 4 54 52'><rect x='4' y='10' width='18"
+    "' height='40' rx='1.5' fill='none' stroke='#264653' stroke-width='2'/><g stroke='#8BA4AD"
+    "' stroke-width='1.5'><line x1='8' y1='18' x2='18' y2='18'/><line x1='8' y1='26' x2='18' "
+    "y2='26'/><line x1='8' y1='34' x2='18' y2='34'/><line x1='8' y1='42' x2='15' y2='42'/></g"
+    "><path d='M25,30 H31 M28.5,26.5 L32,30 L28.5,33.5' fill='none' stroke='#8BA4AD' stroke-w"
+    "idth='1.5'/><rect x='35' y='12' width='9' height='9' fill='#E63946'/><rect x='45' y='12'"
+    " width='9' height='9' fill='#E63946' fill-opacity='0.4'/><rect x='35' y='25.5' width='9'"
+    " height='9' fill='#2A6FA8'/><rect x='45' y='25.5' width='9' height='9' fill='#2A6FA8' fi"
+    "ll-opacity='0.4'/><rect x='35' y='39' width='9' height='9' fill='#2A9D8F'/><rect x='45' "
+    "y='39' width='9' height='9' fill='#2A9D8F' fill-opacity='0.4'/></svg>"
+    , safe="=:/' ")
 GRAPH_VIEW = ('study', 'case', 'session', 'phase', 'outcome', 'outcome_type', 'design', 'page',
               'confidence')
 GRAPH_CLICK = ("document.getElementById('{plot_id}').on('plotly_click', function (d) {"
@@ -131,19 +162,21 @@ def help_html(name):
     text = files('pubextractor').joinpath('app_pages', f"{name}.md").read_text(encoding='utf-8')
     body = MarkdownIt('commonmark', {'html': True}).enable('table').render(text)
     return re.sub(r'<a href="(https?:|mailto:)', r'<a target="_blank" rel="noopener" href="\1',
-                  body)
+                  body.replace('src="logo.svg"', f'src="{LOGO}"'))
 
 
-def help_view(name, target='help_pick'):
-    """Help pages: the list of pages on the left and the chosen page on the right."""
-    name = name if name in HELP_PAGES else 'about'
+def help_view(name, target=None):
+    """One help page; with ``target``, the list of pages beside it, as on Home."""
+    page = ui.div(ui.HTML(help_html(name)), class_='help-body')
+    if target is None:
+        return page
     links = [ui.tags.button(title, type='button',
                             class_='help-item' + (' on' if key == name else ''),
                             onclick=f"Shiny.setInputValue('{target}', '{key}', "
                                     "{priority: 'event'})")
              for key, title in HELP_PAGES.items()]
-    return ui.div(ui.tags.nav(*links, class_='help-nav', aria_label='Help pages'),
-                  ui.div(ui.HTML(help_html(name)), class_='help-body'), class_='help-view')
+    return ui.div(ui.tags.nav(*links, class_='help-nav', aria_label='Help pages'), page,
+                  class_='help-view')
 
 
 def info_button(page, label=None):
@@ -649,6 +682,65 @@ def human_size(size):
     return f"{size / scale:.3g} {unit}" if scale > 1 else f"{size} B"
 
 
+def ai_limit(name):
+    """A shared-key cap from its environment variable, else the default."""
+    variable, default = AI_LIMITS[name]
+    try:
+        value = int(os.environ.get(variable, ''))
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
+SALT = secrets.token_hex(16)
+
+
+def client_hash(session):
+    """A salted hash of the visitor address; the last proxy hop counts only when trusted."""
+    conn = getattr(session, 'http_conn', None)
+    hops = [hop.strip() for hop in (conn.headers.get('x-forwarded-for', '') if conn else '').split(',')
+            if hop.strip()]
+    trusted = os.environ.get('PUBEXTRACTOR_TRUST_PROXY', '').strip().lower() in ('1', 'true', 'yes')
+    address = (hops[-1] if trusted and hops
+               else conn.client.host if conn is not None and conn.client else 'unknown')
+    return hashlib.sha256((SALT + address).encode()).hexdigest()[:16]
+
+
+def shared_key_problem(client, session_calls, now, calls=AI_CALLS):
+    """Reason a shared-key call is refused, or '' after counting it; personal keys are not counted."""
+    calls[:] = [call for call in calls if now - call[0] < 86400]
+    session_calls[:] = [t for t in session_calls if now - t < 3600]
+    hour = [call for call in calls if now - call[0] < 3600]
+    problem = ('The shared AI quota for the last 24 hours is used up.' if len(calls) >= ai_limit('day')
+               else 'The shared AI quota is used up for this hour.' if len(hour) >= ai_limit('hour')
+               else 'This connection reached its shared AI limit for this hour.'
+               if sum(call[1] == client for call in hour) >= ai_limit('client')
+               else 'This session reached its shared AI limit for this hour.'
+               if len(session_calls) >= ai_limit('session') else '')
+    if problem:
+        return problem + ' Enter a personal key, choose rules only, or try again later.'
+    calls.append((now, client))
+    session_calls.append(now)
+    return ''
+
+
+def hosted_problem(path, size, uploaded):
+    """Reason the demo server refuses an upload, or '' when it fits the demo limits."""
+    if uploaded >= HOSTED_FILES:
+        return f"the demo takes {HOSTED_FILES} files per session"
+    if (size or 0) > HOSTED_BYTES:
+        return f"over {HOSTED_BYTES // 1024 ** 2} MB"
+    if Path(path).suffix.lower() != '.pdf':
+        return ''
+    try:
+        import pdfplumber
+        with pdfplumber.open(str(path)) as document:
+            pages = len(document.pages)
+    except Exception:
+        return ''
+    return f"{pages} pages; the demo reads up to {HOSTED_PAGES}" if pages > HOSTED_PAGES else ''
+
+
 def upload_summary(uploads):
     """Short notification text and one item per uploaded file: name, size, type, status, reason."""
     readable = [Path(upload['name']).suffix.lower() in READABLE for upload in uploads]
@@ -962,38 +1054,42 @@ body,table,.shiny-data-grid,.shiny-data-grid :is(table,th,td),.form-control,.for
 .mode .btn.active{background:#007bc2;color:#fff;border-color:#007bc2}
 .sdot{width:.55rem;height:.55rem;border-radius:50%;flex-shrink:0;display:inline-block}
 .topbar{display:flex;align-items:center;gap:18px;padding:0 16px;height:46px;border-bottom:1px solid var(--bs-border-color)}
-.topbar .brand{font-weight:600;font-size:16px}
 .mode-pill{margin-left:auto;display:inline-flex;align-items:center;gap:5px;border:1px solid var(--bs-border-color);border-radius:999px;padding:2px 10px;font-size:12px;background:#f8f9fa}
-.help-page .help-view{min-height:0}
 .help-page .help-body{max-height:none;overflow:visible}
-.flow-step.home{margin-bottom:6px}
-.flow-step.home .n{border:0;font-size:16px}
+.flow-step.home .n{display:none}
+.modal-content:has(.copyright-check) .modal-header{padding:10px 14px;border:0}
+.modal-content:has(.copyright-check) .modal-title{font-size:16px;font-weight:600}
+.modal-content:has(.copyright-check) .modal-body{padding:0 14px}
+.modal-content:has(.copyright-check) .modal-footer{padding:8px 14px;border:0}
+.copyright-check .shiny-input-container{margin-bottom:4px;width:100%}
+.copyright-check .form-check{margin-bottom:0}
+.copyright-check .note{margin:0}
 .info-btn{display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:0 4px;font-size:12px;font-weight:400;color:#007bc2;vertical-align:middle}
 .info-i{width:15px;height:15px;border:1px solid currentColor;border-radius:50%;display:inline-grid;place-items:center;font:italic 600 10px/1 Georgia,serif}
 .info-btn:hover{text-decoration:underline}
-.help-view{display:grid;grid-template-columns:190px minmax(0,1fr);gap:16px;min-height:60vh}
-.help-nav{display:flex;flex-direction:column;gap:2px;border-right:1px solid var(--bs-border-color);padding-right:8px}
-.help-item{border:0;border-radius:6px;background:none;text-align:left;padding:6px 8px;font-size:14px;color:#495057}
+.help-view{display:grid;grid-template-columns:200px minmax(0,1fr);gap:20px}
+.help-nav{display:flex;flex-direction:column;gap:2px;border-right:1px solid var(--bs-border-color);padding-right:10px}
+.help-item{border:0;border-radius:6px;background:none;text-align:left;padding:6px 10px;font-size:14px;color:#495057}
 .help-item:hover{background:#f0f4f8}
-.help-item.on{background:#e7f3fa;color:#007bc2;font-weight:600}
+.help-item.on{background:#007bc2;color:#fff}
 .help-body{font-size:14px;line-height:1.55;max-height:70vh;overflow-y:auto;padding-right:8px}
 .help-body h1{font-size:20px;font-weight:600;margin:0 0 10px}
 .help-body h2{font-size:16px;font-weight:600;margin:18px 0 6px}
 .help-body table{border-collapse:collapse;margin:6px 0 12px;width:auto}
 .help-body th,.help-body td{border:1px solid var(--bs-border-color);padding:4px 8px;vertical-align:top}
 .help-body th{background:#f8f9fa;font-weight:600}
-.help-body pre{background:var(--bs-tertiary-bg);border-radius:6px;padding:8px 10px}
-.help-body code{font-size:.88em}
-.help-body pre code{color:inherit}
-.shell{display:flex;align-items:stretch;min-height:calc(100vh - 46px)}
-.flow{width:190px;flex:0 0 190px;border-right:1px solid var(--bs-border-color);padding:12px 8px;background:#fafbfc;display:flex;flex-direction:column;gap:2px}
-.flow-step{display:flex;gap:8px;align-items:center;padding:7px 8px;border:0;border-radius:6px;background:none;color:#495057;text-align:left;width:100%;font-size:14px}
+.help-body pre{background:var(--bs-tertiary-bg);border-radius:6px;padding:8px 10px;font-size:13.5px}
+.help-body code{font-size:.95em}
+.help-body pre code{color:inherit;font-size:inherit}
+.shell{min-height:calc(100vh - 46px)}
+.flow{display:flex;flex-direction:row;gap:2px;min-width:0;overflow-x:auto}
+.flow-step{display:flex;gap:6px;align-items:center;padding:5px 8px;border:0;border-radius:6px;background:none;color:#495057;white-space:nowrap;font-size:14px}
 .flow-step:hover{background:#f0f4f8}
 .flow-step .n{width:22px;height:22px;flex:0 0 22px;border-radius:50%;border:1px solid #adb5bd;display:grid;place-items:center;font-size:12px}
 .flow-step.done .n{background:#e7f3fa;border-color:#007bc2;color:#007bc2}
 .flow-step.on{background:#e7f3fa;color:#007bc2;font-weight:600}
 .flow-step.on .n{background:#007bc2;color:#fff;border-color:#007bc2}
-.flow-step .count{margin-left:auto;font-size:12px;color:var(--bs-secondary-color);font-weight:400}
+.flow-step .count{margin-left:2px;font-size:12px;color:var(--bs-secondary-color);font-weight:400}
 .main{flex:1;min-width:0;padding:12px 16px}
 .main .tab-content>.tab-pane{display:none}
 .main .tab-content>.active{display:grid;gap:12px}
@@ -1007,6 +1103,13 @@ body,table,.shiny-data-grid,.shiny-data-grid :is(table,th,td),.form-control,.for
 .main .shiny-data-grid{max-height:420px}
 .main .nav-pills .nav-link{padding:4px 10px}
 .row-tight{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.demo-banner{background:#fff7e6;color:#7a4b00;font-size:13px;padding:4px 16px;border-bottom:1px solid #f0d9a8}
+.demo-banner a{color:#7a4b00;text-decoration:underline}
+.demo-banner{position:relative;padding-right:32px}
+.demo-close{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;color:inherit;font-size:16px;line-height:1;padding:0 4px;cursor:pointer;opacity:.7}
+.demo-close:hover,.demo-close:focus-visible{opacity:1}
+.topbar .restart{margin-left:8px;padding:1px 10px;font-size:13px}
+.topbar #mode_pill{margin-left:auto}
 .arm-roles .arm-table{font-weight:600;margin:10px 0 4px}
 .arm-roles .arm-name{min-width:12rem}
 .arm-roles details{margin:4px 0 0 0}
@@ -1063,9 +1166,9 @@ body.splash-on .busy-overlay{display:none!important}
 .fading-circle>div::before{content:"";display:block;margin:0 auto;width:15%;height:15%;background:#007bc2;border-radius:50%;animation:fading-circle 1.2s infinite ease-in-out both;animation-delay:calc(var(--i) * .1s - 1.2s)}
 @keyframes fading-circle{0%,39%,100%{opacity:0}40%{opacity:1}}
 @media (max-width:700px){
-.shell{flex-direction:column}
-.flow{width:auto;flex:none;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--bs-border-color);padding:6px 8px}
-.flow-step{width:auto;padding:5px 6px;font-size:13px;white-space:nowrap}
+.topbar{flex-wrap:wrap;height:auto;padding:6px 12px;gap:6px}
+.flow{order:3;width:100%}
+.flow-step{padding:5px 6px;font-size:13px}
 .flow-step .count{display:none}
 .main{padding:12px}
 .export-row{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -1091,7 +1194,7 @@ def mode_label(model, ollama_model='', provider=''):
 
 def home_button(current):
     """The Home entry above the numbered steps, holding the help pages."""
-    return ui.tags.button(ui.span(ui.HTML('&#8962;'), class_='n'), 'Home', type='button',
+    return ui.tags.button(ui.span(class_='n'), 'Home', type='button',
                           class_='flow-step home' + (' on' if current else ''),
                           onclick="Shiny.setInputValue('step', 'home', {priority: 'event'})")
 
@@ -1119,9 +1222,9 @@ def _pane(key, *content):
 
 model_inputs = ui.TagList(
     ui.div(
-        ui.input_select('model', 'Model', {'none': 'None (rules only)',
-                                           'ollama': 'Ollama (this machine)',
-                                           'api': 'API provider'}),
+        ui.input_select('model', 'Model', {'none': 'None (rules only)', 'api': 'Gemini'} if HOSTED
+                        else {'none': 'None (rules only)', 'ollama': 'Ollama (this machine)',
+                              'api': 'API provider'}),
         ui.panel_conditional(
             "input.model === 'ollama'",
             ui.input_text('ollama_url', 'Ollama base URL', 'http://localhost:11434/v1')),
@@ -1131,10 +1234,16 @@ model_inputs = ui.TagList(
                                selected='gemma3:4b', options={'create': True})),
         ui.panel_conditional(
             "input.model === 'api'",
-            ui.input_select('provider', 'Provider', [p for p in px.PROVIDERS if p != 'ollama'])),
+            ui.input_select('provider', 'Provider', ['gemini'] if HOSTED
+                            else [p for p in px.PROVIDERS if p != 'ollama'])),
         ui.panel_conditional(
             "input.model === 'api'",
-            ui.input_text('api_model', 'API model', API_DEFAULTS['openai'])),
+            ui.input_text('api_model', 'API model',
+                          API_DEFAULTS['gemini' if HOSTED else 'openai'])),
+        ui.panel_conditional(
+            "input.model === 'api'",
+            ui.input_password('api_key', 'Personal key (optional)',
+                              placeholder='uses the shared key when empty')) if HOSTED else None,
         ui.input_text('coder', 'Coder', placeholder='initials, optional'),
         class_='model-grid'),
     ui.panel_conditional("input.model === 'ollama'", ui.output_ui('ollama_list')),
@@ -1168,7 +1277,7 @@ papers_page = _pane(
     ui.div(
         ui.input_select('paper_source', None, PAPER_SOURCES, width='220px'),
         ui.panel_conditional(
-            "input.paper_source === 'upload'",
+            "input.paper_source === 'upload'" + (' && input.copyright_ok' if HOSTED else ''),
             ui.div(ui.input_file('files', None, multiple=True, accept=list(READABLE),
                                  width='420px', button_label='Add files'),
                    ui.span('PDF, DOCX, or image · several at once', class_='note'),
@@ -1405,6 +1514,9 @@ export_page = _pane(
 )
 
 QUEUE_JS = """$(document).on('shiny:connected', function () {
+  Shiny.addCustomMessageHandler('copyright_ok', function (ok) {
+    Shiny.setInputValue('copyright_ok', ok);
+  });
   Shiny.addCustomMessageHandler('queue_mark', function (paper) {
     document.querySelectorAll('.queue-row').forEach(function (row) {
       row.classList.toggle('on', row.dataset.paper === paper);
@@ -1455,10 +1567,18 @@ app_ui = ui.page_fluid(
     ui.busy_indicators.use(spinners=False, pulse=False),
     busy_spinner,
     _plotly_dependency(),
-    ui.div(ui.span('pubextractor', class_='brand'), ui.output_ui('mode_pill', inline=True),
+    ui.div(DEMO_NOTE, ui.tags.a('Run locally', href='https://github.com/mshin77/pubextractor',
+                                target='_blank', rel='noopener'), ' for full use.',
+           ui.tags.button(ui.HTML('&times;'), type='button', class_='demo-close',
+                          aria_label='Close demo note', onclick='this.parentNode.remove()'),
+           class_='demo-banner', role='note') if HOSTED else None,
+    ui.div(ui.output_ui('step_list', class_='flow'),
+           ui.output_ui('mode_pill', inline=True),
+           ui.tags.button('Start over', type='button', class_='btn btn-outline-secondary btn-sm restart',
+                          onclick="if (confirm('Clear all papers, values, and edits and start again?'))"
+                                  " location.reload()"),
            class_='topbar'),
     ui.div(
-        ui.output_ui('step_list', class_='flow'),
         ui.div(ui.navset_hidden(home_page, papers_page, codebook_page, model_page, review_page,
                                 export_page, id='page'),
                class_='main'),
@@ -1470,6 +1590,9 @@ app_ui = ui.page_fluid(
 
 def server(input, output, session):
     workdir = Path(tempfile.mkdtemp(prefix='pubextractor-'))
+    session.on_ended(lambda: shutil.rmtree(workdir, ignore_errors=True))
+    session_calls, ai_note = [], {}
+    client = client_hash(session)
     px.load_env()
     papers = reactive.value({})
     default = parse_codebook(DEFAULT_CODEBOOK)[0]
@@ -1531,7 +1654,7 @@ def server(input, output, session):
     @guarded('Extraction', 'extract')
     async def _read_examples():
         if input.paper_source() == 'example':
-            await _add_papers(example_uploads(tempfile.mkdtemp()))
+            await _add_papers(example_uploads(tempfile.mkdtemp()), examples=True)
 
     @reactive.effect
     @reactive.event(codebook, ignore_init=True)
@@ -1575,7 +1698,44 @@ def server(input, output, session):
         vision_read.difference_update({key for key in vision_read if key[0] in paper_ids})
         kept_roles.difference_update({key for key in kept_roles if key[0] in paper_ids})
 
-    async def _add_papers(uploads):
+    @reactive.effect
+    @reactive.event(input.paper_source)
+    def _ask_copyright():
+        if HOSTED and input.paper_source() == 'upload' and not cleared['copyright']:
+            ui.modal_show(ui.modal(
+                ui.div(ui.input_radio_buttons('copyright_pick', 'Which describes these papers?',
+                                              COPYRIGHT_CHOICES, selected='unsure'),
+                       ui.p('Subscription papers stay on the computer that holds them.',
+                            class_='note'), class_='copyright-check'),
+                title='Papers and copyright', easy_close=False, size='s',
+                footer=ui.TagList(ui.modal_button('Cancel'),
+                                  ui.input_action_button('copyright_go', 'Continue',
+                                                         class_='btn-primary'))))
+
+    cleared = {'copyright': False}
+
+    @reactive.effect
+    @reactive.event(input.copyright_go)
+    def _copyright_go():
+        pick = input.copyright_pick()
+        ui.modal_remove()
+        if pick in ('open_access', 'personal'):
+            cleared['copyright'] = True
+            ui.update_select('access', selected=pick)
+            ui.update_select('license_type', selected='cc-by') if pick == 'open_access' else None
+            notify('License set to open access, CC BY; change it in Model if the papers use '
+                   'another license.' if pick == 'open_access'
+                   else 'License set to personal copy.')
+            return session.send_custom_message('copyright_ok', True)
+        ui.update_select('paper_source', selected='')
+        notify(STOP_UPLOAD, 'warning')
+
+    async def _add_papers(uploads, examples=False):
+        if HOSTED and not examples:
+            uploads, refused = _hosted_uploads(uploads)
+            [notify(f"{name} not added: {reason}.", 'warning') for name, reason in refused]
+            if not uploads:
+                return
         found, passed = dict(papers()), dict(skipped())
         for upload in uploads:
             target = workdir / Path(upload['name']).name
@@ -1592,6 +1752,14 @@ def server(input, output, session):
             notify(message, 'warning')
         if found:
             await _extract()
+
+    def _hosted_uploads(uploads):
+        """Uploads within the demo limits, and the refused ones with their reasons."""
+        before = sum(paper['name'] not in EXAMPLE_PAPERS for paper in papers().values())
+        problems = [hosted_problem(upload['datapath'], upload.get('size'), before + i)
+                    for i, upload in enumerate(uploads)]
+        return ([upload for upload, problem in zip(uploads, problems) if not problem],
+                [(upload['name'], problem) for upload, problem in zip(uploads, problems) if problem])
 
     @render.ui
     def upload_list():
@@ -1683,18 +1851,35 @@ def server(input, output, session):
                           'py-2 px-2 mb-0')
         key = px.PROVIDERS[input.provider()][1]
         state = 'found' if key and key in os.environ else 'not set'
-        return ui.div(f"API: text leaves the machine. {key} {state}.",
+        shared = ('Personal key in use.' if HOSTED and input.api_key().strip()
+                  else 'Shared key with hourly limits.' if HOSTED else f"{key} {state}.")
+        return ui.div(f"API: text leaves the machine under the license check. {shared}",
                       class_='alert alert-warning py-2 px-2 mb-0')
 
     def _model():
         if input.model() == 'none':
             return {}
+        personal = input.api_key().strip() if HOSTED else ''
+        key_env = px.PROVIDERS[input.provider()][1]
         responder = (px.make_responder('ollama', input.ollama_model(),
                                        base_url=input.ollama_url())
                      if input.model() == 'ollama'
-                     else px.make_responder(input.provider(), input.api_model()))
+                     else px.make_responder(input.provider(), input.api_model(),
+                                            environ={key_env: personal} if personal else None))
         respond, endpoint = responder
-        return {'respond': respond, 'endpoint': endpoint, 'permission': permission()}
+        return {'respond': _capped(respond) if HOSTED and not personal else respond,
+                'endpoint': endpoint, 'permission': permission()}
+
+    def _capped(respond):
+        """The shared-key responder behind the demo caps; a refused call keeps its reason."""
+        def capped(prompt, images=None):
+            problem = shared_key_problem(client, session_calls, time.time())
+            if problem:
+                ai_note['problem'] = problem
+                raise PermissionError(problem)
+            return respond(prompt, images)
+        capped.model, capped.provider = respond.model, respond.provider
+        return capped
 
     async def _extract():
         book, chosen = codebook(), papers()
@@ -1751,6 +1936,7 @@ def server(input, output, session):
             return
         run.pop('bar').close()
         notify(extract_summary(run['found'], run['total']), loading='extract')
+        notify(ai_note.pop('problem'), 'warning') if ai_note.get('problem') else None
         for problem in run['failed']:
             notify(problem, 'error')
 
@@ -1762,11 +1948,6 @@ def server(input, output, session):
         help_shown.set(input.help_page())
         ui.modal_show(ui.modal(ui.output_ui('help_panel'), title='Help', size='xl',
                                easy_close=True, footer=ui.modal_button('Close')))
-
-    @reactive.effect
-    @reactive.event(input.help_pick)
-    def _pick_help():
-        help_shown.set(input.help_pick())
 
     @render.ui
     def help_panel():
@@ -1793,8 +1974,9 @@ def server(input, output, session):
         found = current()
         chosen = (input.model() == 'none' or
                   bool(input.ollama_model() if input.model() == 'ollama' else input.api_model()))
-        done = {'papers': bool(count_papers(papers())), 'codebook': codebook() is not None and not problems(),
-                'model': chosen, 'review': bool(found), 'export': exported()}
+        done = {'papers': bool(count_papers(papers())), 'review': bool(found), 'export': exported(),
+                'codebook': bool(found) and codebook() is not None and not problems(),
+                'model': bool(found) and chosen}
         counts = {'papers': count_papers(papers()), 'codebook': len(codebook() or {}),
                   'review': sum(r['status'] == 'review' for r in found)}
         return ui.TagList(home_button(stage() == 'home'),

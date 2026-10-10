@@ -6,7 +6,7 @@ semantic scores, and language models, and checks per paper where its text
 may be processed.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __author__ = "Mikyung Shin"
 __license__ = "MIT"
 

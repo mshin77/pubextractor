@@ -1,5 +1,11 @@
+# pubextractor 0.1.1
+
+- Adds a web-hosted demo mode.
+- Recommends coding choices for the coder to confirm.
+- Simplifies the help pages.
+
 # pubextractor 0.1.0
 
-- Reads PDF and DOCX text and tables, including image tables in scanned PDFs and image files, with the page of each piece of evidence.
-- Extracts fields from an Excel codebook by rules first, with a license check before any model call and a per-paper review queue.
+- Reads PDF, DOCX, and image tables with page anchors.
+- Extracts codebook fields by rules, with a license check before any model call.
 - Computes Hedges' g with a metafor export.

@@ -5,6 +5,7 @@ dist/
 *.egg-info/
 .pytest_cache/
 .env
+.claude
 .doctrees/
 docs/_sources/
 docs/.buildinfo.bak

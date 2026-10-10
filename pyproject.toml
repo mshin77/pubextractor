@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pubextractor"
-version = "0.1.0"
+version = "0.1.1"
 description = "Data extraction for systematic reviews and meta-analyses"
 readme = "README.md"
 license = "MIT"
@@ -60,7 +60,7 @@ where = ["."]
 include = ["pubextractor*"]
 
 [tool.setuptools.package-data]
-pubextractor = ["app_pages/*.md", "examples/*"]
+pubextractor = ["app_pages/*.md", "app_pages/*.svg", "examples/*"]
 
 [tool.ruff]
 line-length = 100

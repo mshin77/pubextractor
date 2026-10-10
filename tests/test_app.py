@@ -48,8 +48,10 @@ class TestSteps:
         html = str(shiny_app.home_button(True))
         assert 'Home' in html and '&apos;step&apos;, &apos;home&apos;' in html
         assert 'flow-step home on' in html
-        assert '&apos;home_pick&apos;, &apos;codebook&apos;' in str(
+        assert 'help-nav' not in str(shiny_app.help_view('about'))
+        assert '&apos;home_pick&apos;, &apos;support&apos;' in str(
             shiny_app.help_view('about', 'home_pick'))
+        assert list(shiny_app.HELP_PAGES)[-1] == 'support'
 
     def test_step_button_shows_a_tick_and_count(self):
         html = str(shiny_app.step_button(0, 'papers', 'Papers', True, True, 2))
@@ -631,7 +633,7 @@ class TestHelp:
 
     def test_view_marks_the_chosen_page(self):
         view = str(shiny_app.help_view('codebook'))
-        assert 'class="help-item on"' in view and 'Search terms' in view
+        assert 'Search terms' in view and 'help-item' not in view
 
     def test_info_button_names_its_page(self):
         assert '&apos;license_check&apos;' in str(shiny_app.info_button('license_check'))
@@ -721,3 +723,30 @@ def test_keep_human_keeps_row_order():
            for i, f in enumerate('abc')]
     old = [{**new[1], 'value': 9, 'layer': 'human'}]
     assert [r['value'] for r in keep_human(new, old)] == [1, 9, 1]
+
+
+class TestHosted:
+    def test_shared_key_caps_per_session_and_client(self, monkeypatch):
+        monkeypatch.setenv('PUBEXTRACTOR_AI_SESSION_CALLS', '2')
+        calls, mine = [], []
+        assert shiny_app.shared_key_problem('a', mine, 0, calls) == ''
+        assert shiny_app.shared_key_problem('a', mine, 1, calls) == ''
+        assert 'This session reached' in shiny_app.shared_key_problem('a', mine, 2, calls)
+        assert shiny_app.shared_key_problem('b', [], 3, calls) == ''
+        assert len(calls) == 3
+
+    def test_shared_quota_resets_after_an_hour(self, monkeypatch):
+        monkeypatch.setenv('PUBEXTRACTOR_AI_SHARED_CALLS', '1')
+        calls = []
+        assert shiny_app.shared_key_problem('a', [], 0, calls) == ''
+        assert 'used up for this hour' in shiny_app.shared_key_problem('b', [], 10, calls)
+        assert shiny_app.shared_key_problem('b', [], 3700, calls) == ''
+
+    def test_upload_limits(self, study_pdf):
+        path = study_pdf([['Group', 'n'], ['Treatment', '20']], caption=['Table 1. Scores'])
+        assert shiny_app.hosted_problem(path, 1000, 0) == ''
+        assert shiny_app.hosted_problem(path, 11 * 1024 ** 2, 0) == 'over 10 MB'
+        assert 'files per session' in shiny_app.hosted_problem(path, 1000, 3)
+
+    def test_copyright_page_is_listed(self):
+        assert 'Subscription paper' in shiny_app.help_html('copyright')
