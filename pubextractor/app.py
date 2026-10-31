@@ -1616,7 +1616,10 @@ busy_spinner = ui.div(ui.div(*[ui.div(style=f"--i:{i}") for i in range(12)],
                       class_='busy-overlay', role='status', aria_label='Working')
 
 app_ui = ui.page_fluid(
-    ui.head_content(ui.tags.link(rel='icon', href=FAVICON)),
+    ui.head_content(ui.tags.link(rel='icon', href=FAVICON),
+                    ui.tags.meta(name='description', content='Extract coded values and effect sizes '
+                                 'from PDF, Word, and image files for systematic reviews and meta-analyses.'),
+                    ui.tags.link(rel='canonical', href='https://www.pubextractor.org/')),
     ui.tags.style(CSS),
     splash,
     ui.tags.script(ui.HTML(SPLASH_JS)),

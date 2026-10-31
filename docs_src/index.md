@@ -1,3 +1,8 @@
+---
+myst:
+  html_meta:
+    description: "pubextractor reads PDF, Word, and image files, shows the source evidence, and exports coded values and effect sizes for systematic reviews and meta-analyses."
+---
 # Extract data from papers
 
 Read PDF, Word, and image files, check the source evidence, and export coded values and effect sizes.

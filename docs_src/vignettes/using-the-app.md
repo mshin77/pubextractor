@@ -1,3 +1,8 @@
+---
+myst:
+  html_meta:
+    description: "A walk through the pubextractor web app, from adding papers to exporting coded values."
+---
 # Using the App
 
 Open the [web app](https://www.pubextractor.org), or follow [Getting Started](../getting-started.md) to run it locally.

@@ -1,3 +1,8 @@
+---
+myst:
+  html_meta:
+    description: "Functions in the pubextractor Python package for reading documents, extracting values, and computing effect sizes."
+---
 # API Reference
 
 ## Reading documents

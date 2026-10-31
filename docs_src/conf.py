@@ -1,3 +1,6 @@
+import re
+from pathlib import Path
+
 project = "pubextractor"
 author = "Mikyung Shin"
 copyright = "2026 Mikyung Shin"
@@ -49,6 +52,24 @@ html_sidebars = {
 }
 
 html_show_sourcelink = False
+html_title = "pubextractor"
+html_baseurl = "https://mshin77.github.io/pubextractor/"
+html_permalinks_icon = ""
 
 # sphinx copies every source file into _sources; the sources already live in docs_src
 html_copy_source = False
+
+
+def drop_version_tags(app, exception):
+    if exception or app.builder.format != "html":
+        return
+    for page in Path(app.outdir).rglob("*.html"):
+        text = page.read_text(encoding="utf-8")
+        clean = re.sub(r'(\.(?:js|css))\?(?:v|digest)=[0-9a-f]+', r"\1", text)
+        clean = clean.replace(f'href="{html_baseurl}index.html"', f'href="{html_baseurl}"')
+        if clean != text:
+            page.write_text(clean, encoding="utf-8")
+
+
+def setup(app):
+    app.connect("build-finished", drop_version_tags)

@@ -1,3 +1,8 @@
+---
+myst:
+  html_meta:
+    description: "Install pubextractor and run the app or the Python package on your own papers."
+---
 # Getting Started
 
 ## Install

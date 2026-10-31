@@ -44,3 +44,7 @@ html {
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+.headerlink::after {
+    content: "#";
+}
