@@ -210,7 +210,7 @@ class TermEncoder:
     """Fallback sentence encoder: hashed word counts with IDF weights, for retrieval only.
 
     Used when sentence-transformers is missing. Words are hashed into ``dims``
-    buckets with log-scaled counts; IDF weights are learnt from the last call
+    buckets with log-scaled counts; IDF weights are learned from the last call
     with several texts (the chunks) and reused for single queries. It matches
     shared words only, so retrieval is weaker than with a sentence model.
     """

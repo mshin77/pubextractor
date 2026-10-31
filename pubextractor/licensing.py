@@ -23,7 +23,7 @@ NONCOMMERCIAL_LICENSES = {'cc-by-nc', 'cc-by-nd', 'cc-by-nc-sa', 'cc-by-nc-nd'}
 
 EXCEPTIONS = {
     'us': 'US fair use (17 U.S.C. §107), which is decided case by case',
-    'eu': ('the EU DSM Directive Art. 3 exception for research organisations, which '
+    'eu': ('the EU DSM Directive Art. 3 exception for research organizations, which '
            'requires lawful access and secure storage (Art. 3(2))'),
     'uk': 'the UK CDPA s29A exception for non-commercial research with lawful access',
     'other': 'local copyright law (confirm with the library)',
@@ -31,14 +31,14 @@ EXCEPTIONS = {
 
 # where an exception covers only some reviewers, the others are referred onward
 LIMITS = {
-    'eu': ('Outside a research organisation the EU DSM Directive Art. 4 applies, and '
+    'eu': ('Outside a research organization the EU DSM Directive Art. 4 applies, and '
            'publishers may opt out of it'),
     'uk': 'The UK CDPA s29A exception covers only non-commercial research',
 }
 
 # contract terms that bar a local copy for text and data mining may not bind
 OVERRIDES = {
-    'eu': (' For a research organisation the term may be unenforceable against a local '
+    'eu': (' For a research organization the term may be unenforceable against a local '
            'copy made for text and data mining (EU DSM Directive Art. 7(1)); confirm '
            'with the library.'),
     'uk': (' The term may be unenforceable against a local copy made for non-commercial '
